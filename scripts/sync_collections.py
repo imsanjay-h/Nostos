@@ -236,23 +236,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        save_json("anime.json", current)
-        print(f"AniList: synced {len(entries)} entries ({len(watched)} non-planning, {len(watchlist)} planning).")
-    except Exception as exc:
-        print(f"AniList sync failed: {exc}", file=sys.stderr)
-
-
-def main():
-    sync_letterboxd()
-    sync_anilist()
-
-
-if __name__ == "__main__":
-    main()
-ef main():
-    sync_letterboxd()
-    sync_anilist()
-
-
-if __name__ == "__main__":
-    main()
+    
