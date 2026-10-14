@@ -51,37 +51,54 @@
     setupPosterInteraction(element);
     setupAutoMotion(element);
   }
-  // Gentle continuous horizontal movement for overflowing poster rows.
-  // Uses scrollLeft (not transforms) so touch scrolling and accessibility remain native.
+  // Automatic row motion. The viewport remains natively scrollable for touch.
+  // Do not pause on every `scroll` event: programmatic scrollLeft changes also
+  // fire scroll events, which previously reset the pause timer forever.
   function setupAutoMotion(row) {
     const viewport = row && row.closest('.marquee-window');
     if (!row || !viewport || row.dataset.autoMotion === 'true') return;
     row.dataset.autoMotion = 'true';
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let frame = 0, lastTime = 0, pausedUntil = 0, direction = 1;
-    const speed = 18; // pixels per second: deliberately slow and calm
+
+    let lastTime = 0;
+    let pausedUntil = performance.now() + 900;
+    let direction = 1;
+    let userInteracting = false;
+    const speed = 16; // calm movement, pixels per second
     const maxScroll = () => Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-    const pause = (ms = 1400) => { pausedUntil = performance.now() + ms; };
+    const pause = (ms = 1800) => { pausedUntil = performance.now() + ms; };
+
+    viewport.addEventListener('pointerenter', () => pause(1600));
+    viewport.addEventListener('pointerdown', () => { userInteracting = true; pause(4500); }, { passive: true });
+    const endTouch = () => { userInteracting = false; pause(1800); };
+    viewport.addEventListener('pointerup', endTouch, { passive: true });
+    viewport.addEventListener('pointercancel', endTouch, { passive: true });
+    viewport.addEventListener('touchstart', () => { userInteracting = true; pause(4500); }, { passive: true });
+    viewport.addEventListener('touchend', endTouch, { passive: true });
+    viewport.addEventListener('touchcancel', endTouch, { passive: true });
+    viewport.addEventListener('wheel', () => pause(2200), { passive: true });
+    // Keyboard users can still scroll the native viewport; pause while focused.
+    viewport.addEventListener('focusin', () => pause(5000));
+    viewport.addEventListener('keydown', event => {
+      if (['ArrowLeft','ArrowRight','Home','End','PageUp','PageDown',' '].includes(event.key)) pause(3000);
+    });
+    document.addEventListener('visibilitychange', () => { lastTime = 0; pause(1000); });
+
     const tick = now => {
-      if (!document.hidden) {
-        const max = maxScroll();
-        if (max > 8 && now >= pausedUntil && !row.matches(':hover') && !viewport.matches(':active')) {
-          if (lastTime) viewport.scrollLeft += direction * speed * Math.min((now - lastTime) / 1000, .05);
-          if (viewport.scrollLeft >= max - 1) { viewport.scrollLeft = max; direction = -1; pause(450); }
-          else if (viewport.scrollLeft <= 1 && direction < 0) { viewport.scrollLeft = 0; direction = 1; pause(450); }
+      const max = maxScroll();
+      if (!document.hidden && !userInteracting && max > 8 && now >= pausedUntil && !row.matches(':hover')) {
+        if (lastTime) {
+          const step = speed * Math.min((now - lastTime) / 1000, 0.05);
+          const next = viewport.scrollLeft + direction * step;
+          if (next >= max) { viewport.scrollLeft = max; direction = -1; pause(450); }
+          else if (next <= 0) { viewport.scrollLeft = 0; direction = 1; pause(450); }
+          else viewport.scrollLeft = next;
         }
       }
       lastTime = now;
-      frame = requestAnimationFrame(tick);
+      requestAnimationFrame(tick);
     };
-    viewport.addEventListener('pointerenter', () => pause(1800));
-    viewport.addEventListener('pointerdown', () => pause(5000), {passive:true});
-    viewport.addEventListener('touchstart', () => pause(5000), {passive:true});
-    viewport.addEventListener('wheel', () => pause(2500), {passive:true});
-    viewport.addEventListener('scroll', () => pause(1800), {passive:true});
-    document.addEventListener('visibilitychange', () => { lastTime = 0; });
-    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { if (maxScroll() <= 8) viewport.scrollLeft = 0; }).observe(viewport);
-    frame = requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
   }
   function setupPosterInteraction(row) {
     if (!row || row.dataset.posterInteraction === 'true') return;
