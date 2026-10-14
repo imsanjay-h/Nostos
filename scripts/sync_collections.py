@@ -83,37 +83,67 @@ def merge_preserving_personal_fields(existing, incoming, key_fields=None):
 
 
 class WatchlistHTMLParser(HTMLParser):
-    """Extract film poster links from Letterboxd's publicly visible watchlist HTML."""
+    """Extract film cards from Letterboxd HTML across common poster markup variants."""
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.anchor = None
-        self.films = []
+        self.films = {}
+        self.stack = []
         self.next_page = False
+        self.film_markers = 0
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        if tag == "a":
-            href = attrs.get("href", "")
-            if re.search(r"/film/[^/]+/?$", href):
-                self.anchor = {"href": urllib.parse.urljoin("https://letterboxd.com", href),
-                               "title": attrs.get("title", ""), "name": attrs.get("data-film-name", ""),
-                               "slug": re.search(r"/film/([^/]+)/?", href).group(1), "poster": None}
-            if re.search(r"/watchlist/page/\d+/?", href) and ("next" in attrs.get("class", "").lower() or attrs.get("rel") == "next"):
-                self.next_page = True
-        elif tag == "img" and self.anchor is not None:
-            alt = attrs.get("alt", "").strip()
-            if alt and not self.anchor.get("title"):
-                self.anchor["title"] = alt
-            self.anchor["poster"] = attrs.get("src") or attrs.get("data-src") or attrs.get("data-original")
+        href = attrs.get("href", "") or ""
+        slug_match = re.search(r"/film/([^/?#]+)/?", href)
+        slug = attrs.get("data-film-slug") or (slug_match.group(1) if slug_match else None)
+        if slug:
+            self.film_markers += 1
+            record = self.films.setdefault(slug, {
+                "href": urllib.parse.urljoin("https://letterboxd.com", href) if slug_match else f"https://letterboxd.com/film/{slug}/",
+                "slug": slug, "title": "", "poster": None
+            })
+            title = attrs.get("data-film-name") or attrs.get("title") or attrs.get("aria-label")
+            if title and not record["title"]:
+                record["title"] = title.strip()
+            if slug_match:
+                record["href"] = urllib.parse.urljoin("https://letterboxd.com", href)
+            self.stack.append((tag, slug))
+        else:
+            self.stack.append((tag, None))
+
+        if tag == "img":
+            poster = attrs.get("src") or attrs.get("data-src") or attrs.get("data-original") or attrs.get("data-lazy-src")
+            alt = (attrs.get("alt") or "").strip()
+            # The poster image is often nested under a film-poster element rather than its link.
+            for _, active_slug in reversed(self.stack[:-1]):
+                if active_slug:
+                    record = self.films[active_slug]
+                    if poster and not record.get("poster"):
+                        record["poster"] = urllib.parse.urljoin("https://letterboxd.com", poster)
+                    if alt and not record.get("title") and alt.lower() not in ("poster", "film poster"):
+                        record["title"] = alt
+                    break
+
+        if re.search(r"/watchlist/page/\d+/?", href) and ("next" in attrs.get("class", "").lower() or attrs.get("rel") == "next"):
+            self.next_page = True
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
-        if tag == "a" and self.anchor is not None:
-            film = self.anchor
-            title = (film.get("name") or film.get("title") or "").strip()
-            if title:
-                self.films.append({**film, "display_title": title})
-            self.anchor = None
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i][0] == tag:
+                del self.stack[i:]
+                break
 
+    def entries(self):
+        result = []
+        for film in self.films.values():
+            title = (film.get("title") or "").strip()
+            if title:
+                result.append({**film, "display_title": title})
+        return result
 
 def merge_current_collection(existing, incoming):
     """Refresh a live collection, retaining user-authored fields for films still present."""
@@ -145,7 +175,7 @@ def fetch_letterboxd_watchlist(username):
         parser = WatchlistHTMLParser()
         parser.feed(html)
         page_entries = []
-        for film in parser.films:
+        for film in parser.entries():
             title = re.sub(r"\s+", " ", film["display_title"]).strip()
             year_match = re.search(r"(?:\(|,\s*)(18|19|20)\d{2}\)?", title)
             year = int(year_match.group(0).strip(" (,)")[-4:]) if year_match else None
@@ -159,7 +189,10 @@ def fetch_letterboxd_watchlist(username):
             })
         if not page_entries:
             if page == 1:
-                raise RuntimeError("public watchlist page returned no film posters; preserving existing watchlist")
+                page_title_match = re.search(r"<title[^>]*>(.*?)</title>", html, flags=re.IGNORECASE | re.DOTALL)
+                page_title = re.sub(r"\s+", " ", page_title_match.group(1)).strip() if page_title_match else "(no HTML title)"
+                markers = len(re.findall(r"data-film-slug=|href=[\"'](?:https?://letterboxd\.com)?/film/", html, flags=re.IGNORECASE))
+                raise RuntimeError(f"public watchlist page yielded no titled films (HTML title: {page_title!r}; film markers: {markers}; parser markers: {parser.film_markers}); preserving existing watchlist")
             break
         all_entries.extend(page_entries)
         # Continue while a full poster page is present; an empty next page ends pagination safely.
