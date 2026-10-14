@@ -1,0 +1,11 @@
+{
+  "items": [],
+  "watchlist": [],
+  "tiers": [
+    {"id":"immortals","number":"01","name":"THE IMMORTALS","description":"Films that become part of you. The ones you carry for years."},
+    {"id":"works-of-art","number":"02","name":"WORKS OF ART","description":"Exceptional filmmaking, storytelling, performances, or ideas."},
+    {"id":"stayed-with-me","number":"03","name":"STAYED WITH ME","description":"Films that made you feel something or left you thinking."},
+    {"id":"a-good-time","number":"04","name":"A GOOD TIME","description":"Enjoyable, entertaining, and absolutely worth watching."},
+    {"id":"didnt-connect","number":"05","name":"DIDN'T CONNECT","description":"Films that simply weren't for you. No need to pretend otherwise."}
+  ]
+}

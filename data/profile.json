@@ -1,0 +1,14 @@
+{
+  "name": "Sanjaykumar",
+  "intro": "I'm Sanjay — a student, an interdisciplinary thinker, and someone who keeps finding new doors inside old interests. Nostos is where those discoveries live: not neatly sorted into a final answer, but collected as I go.",
+  "currentlyListening": "Music goes here when you feel like updating it.",
+  "currentlyReading": "The book currently keeping me company.",
+  "currentThought": "A little space for whatever you're thinking about lately.",
+  "socials": [
+    {"label":"Letterboxd","detail":"FILM DIARY","url":"","number":"01"},
+    {"label":"AniList","detail":"ANIME LIST","url":"","number":"02"},
+    {"label":"Goodreads","detail":"BOOKSHELF","url":"","number":"03"},
+    {"label":"GitHub","detail":"MADE ON THE INTERNET","url":"https://github.com/imsanjay-h","number":"04"},
+    {"label":"Email","detail":"A NOTE, IF YOU LIKE","url":"","number":"05"}
+  ]
+}
