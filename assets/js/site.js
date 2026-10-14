@@ -49,6 +49,39 @@
     if (!shown.length) { element.appendChild(placeholder(emptyLabel, element.classList.contains('mini-row'))); return; }
     shown.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
     setupPosterInteraction(element);
+    setupAutoMotion(element);
+  }
+  // Gentle continuous horizontal movement for overflowing poster rows.
+  // Uses scrollLeft (not transforms) so touch scrolling and accessibility remain native.
+  function setupAutoMotion(row) {
+    const viewport = row && row.closest('.marquee-window');
+    if (!row || !viewport || row.dataset.autoMotion === 'true') return;
+    row.dataset.autoMotion = 'true';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0, lastTime = 0, pausedUntil = 0, direction = 1;
+    const speed = 18; // pixels per second: deliberately slow and calm
+    const maxScroll = () => Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const pause = (ms = 1400) => { pausedUntil = performance.now() + ms; };
+    const tick = now => {
+      if (!document.hidden) {
+        const max = maxScroll();
+        if (max > 8 && now >= pausedUntil && !row.matches(':hover') && !viewport.matches(':active')) {
+          if (lastTime) viewport.scrollLeft += direction * speed * Math.min((now - lastTime) / 1000, .05);
+          if (viewport.scrollLeft >= max - 1) { viewport.scrollLeft = max; direction = -1; pause(450); }
+          else if (viewport.scrollLeft <= 1 && direction < 0) { viewport.scrollLeft = 0; direction = 1; pause(450); }
+        }
+      }
+      lastTime = now;
+      frame = requestAnimationFrame(tick);
+    };
+    viewport.addEventListener('pointerenter', () => pause(1800));
+    viewport.addEventListener('pointerdown', () => pause(5000), {passive:true});
+    viewport.addEventListener('touchstart', () => pause(5000), {passive:true});
+    viewport.addEventListener('wheel', () => pause(2500), {passive:true});
+    viewport.addEventListener('scroll', () => pause(1800), {passive:true});
+    document.addEventListener('visibilitychange', () => { lastTime = 0; });
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => { if (maxScroll() <= 8) viewport.scrollLeft = 0; }).observe(viewport);
+    frame = requestAnimationFrame(tick);
   }
   function setupPosterInteraction(row) {
     if (!row || row.dataset.posterInteraction === 'true') return;
