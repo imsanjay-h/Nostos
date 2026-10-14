@@ -14,7 +14,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-USER_AGENT = "NostosCollectionSync/1.0 (+https://github.com/)"
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 def load_json(name, fallback):
@@ -34,7 +37,12 @@ def save_json(name, value):
 
 
 def request(url, data=None, headers=None):
-    request_headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
+    request_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Cache-Control": "no-cache",
+    }
     if headers:
         request_headers.update(headers)
     body = data
@@ -222,6 +230,13 @@ def sync_anilist():
 
 
 def main():
+    sync_letterboxd()
+    sync_anilist()
+
+
+if __name__ == "__main__":
+    main()
+ef main():
     sync_letterboxd()
     sync_anilist()
 
