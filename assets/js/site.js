@@ -27,13 +27,13 @@
     const kind = safe(item.kindLabel || item.type || 'COLLECTED');
     const style = `--card-bg:${safe(item.color || bg)};--card-ink:${safe(item.ink || ink)};--card-shape:${safe(item.shape || shape)}`;
     const image = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
-    return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-name">${title}</span><span class="poster-year">${year}</span></div>`;
+    return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-year">${year}</span></div>`;
   }
   function createPoster(item, index = 0, collection = 'entry') {
     const button = document.createElement('button');
     button.className = 'poster-card'; button.type = 'button'; button.setAttribute('aria-label', `Open details for ${getTitle(item)}`);
     button._nostosItem = item; button._nostosCollection = collection; button._nostosIndex = index;
-    button.innerHTML = `${cardArt(item,index)}<span class="poster-caption"><span>${safe(getTitle(item))}</span><span>${safe(item.year || item.releaseYear || '')}</span></span>`;
+    button.innerHTML = `${cardArt(item,index)}<span class="poster-caption"><span class="poster-caption-title" title="${safe(getTitle(item))}">${safe(getTitle(item))}</span><span class="poster-caption-year">${safe(item.year || item.releaseYear || item.startDate?.year || '')}</span></span>`;
     button.addEventListener('click', () => openModal(item, collection, index));
     return button;
   }
@@ -48,29 +48,26 @@
     const shown = limit ? items.slice(0, limit) : items;
     if (!shown.length) { element.appendChild(placeholder(emptyLabel, element.classList.contains('mini-row'))); return; }
     shown.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
-    if (shown.length > 2) setupMarquee(element);
+    setupPosterInteraction(element);
   }
-  function setupMarquee(row) {
-    if (row.dataset.marqueeReady === 'true') return;
-    const parent = row.parentElement;
-    if (!parent) return;
-    requestAnimationFrame(() => {
-      const originalWidth = row.scrollWidth;
-      if (originalWidth <= parent.clientWidth + 12 || row.children.length < 3) return;
-      const originals = Array.from(row.children);
-      originals.forEach(node => {
-        const clone = node.cloneNode(true);
-        if (node._nostosItem) {
-          clone._nostosItem = node._nostosItem; clone._nostosCollection = node._nostosCollection; clone._nostosIndex = node._nostosIndex;
-          clone.addEventListener('click', () => openModal(clone._nostosItem, clone._nostosCollection, clone._nostosIndex));
-        }
-        row.appendChild(clone);
+  function setupPosterInteraction(row) {
+    if (!row || row.dataset.posterInteraction === 'true') return;
+    row.dataset.posterInteraction = 'true';
+    const cards = () => Array.from(row.querySelectorAll('.poster-card'));
+    const clearLift = () => cards().forEach(card => card.style.setProperty('--poster-lift', '0px'));
+    row.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      const list = cards();
+      const hovered = event.target.closest('.poster-card');
+      if (!hovered) { clearLift(); return; }
+      const focusIndex = list.indexOf(hovered);
+      list.forEach((card, index) => {
+        const distance = Math.abs(index - focusIndex);
+        const lift = distance === 0 ? 13 : distance === 1 ? 6 : distance === 2 ? 2.5 : 0;
+        card.style.setProperty('--poster-lift', `${lift}px`);
       });
-      const total = row.scrollWidth;
-      row.style.setProperty('--travel', `${Math.round(total / 2)}px`);
-      row.style.setProperty('--duration', `${Math.max(24, Math.round(originalWidth / 23))}s`);
-      row.classList.add('is-moving'); row.dataset.marqueeReady = 'true';
     });
+    row.addEventListener('pointerleave', clearLift);
   }
   function openModal(item, collection, index = 0) {
     const backdrop = byId('detail-modal'); if (!backdrop) return;
