@@ -382,87 +382,129 @@ def sync_anilist():
 
 
 
+def _goodreads_rss_entries(url):
+    """Fetch and normalize a Goodreads RSS feed without assuming shelf parameters."""
+    raw = request(url, headers={"Accept": "application/rss+xml, application/xml, text/xml"})
+    root = ET.fromstring(raw)
+    channel = root.find("channel")
+    if channel is None:
+        raise RuntimeError("RSS response had no channel")
+    entries = []
+    for node in channel.findall("item"):
+        title = (node.findtext("title") or "").strip()
+        link = (node.findtext("link") or "").strip()
+        if not title:
+            continue
+
+        def field(name):
+            found = node.find(name)
+            if found is None or found.text is None:
+                return ""
+            return html_lib.unescape(found.text.strip())
+
+        book_id = field("book_id")
+        author = field("author_name") or field("author")
+        cover = field("book_image_url") or field("book_large_image_url") or field("book_medium_image_url")
+        rating_text = field("user_rating")
+        try:
+            rating = int(float(rating_text)) if rating_text else None
+        except ValueError:
+            rating = None
+        year_text = field("book_published") or field("original_publication_year")
+        match = re.search(r"\b(?:18|19|20)\d{2}\b", year_text)
+        year = int(match.group(0)) if match else None
+        shelves = field("user_shelves") or field("shelves")
+        entries.append({
+            "source": "goodreads", "sourceId": book_id or link or title.casefold(),
+            "title": title, "author": author, "year": year,
+            "url": link, "coverUrl": cover, "rating": rating,
+            "goodreadsShelves": shelves, "kindLabel": "GOODREADS"
+        })
+    return entries
+
+
+def _merge_goodreads_books(existing, incoming, default_status, default_shelf):
+    """Merge RSS records by Goodreads ID/URL/title, preserving local notes and older exports."""
+    old_by_key = {}
+    for old in existing:
+        if not isinstance(old, dict):
+            continue
+        for key in (old.get("sourceId"), old.get("url"), (old.get("title") or "").strip().casefold()):
+            if key:
+                old_by_key[str(key).casefold()] = old
+    result = []
+    seen = set()
+    personal_fields = ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape")
+    for fresh in incoming:
+        keys = [str(fresh.get(k)).casefold() for k in ("sourceId", "url") if fresh.get(k)]
+        title_key = (fresh.get("title") or "").strip().casefold()
+        if title_key:
+            keys.append(title_key)
+        old = next((old_by_key[k] for k in keys if k in old_by_key), {})
+        merged = dict(old)
+        merged.update({k: v for k, v in fresh.items() if v not in (None, "", [])})
+        for field in personal_fields:
+            if old.get(field) not in (None, ""):
+                merged[field] = old[field]
+        merged.setdefault("status", default_status)
+        merged.setdefault("goodreadsShelf", default_shelf)
+        identifiers = [str(merged.get(k)).casefold() for k in ("sourceId", "url") if merged.get(k)]
+        if title_key:
+            identifiers.append(title_key)
+        if not any(key in seen for key in identifiers):
+            result.append(merged)
+        seen.update(identifiers)
+    # RSS is a limited recent window; never remove books from an export or earlier sync.
+    for old in existing:
+        if not isinstance(old, dict):
+            continue
+        identifiers = [str(old.get(k)).casefold() for k in ("sourceId", "url") if old.get(k)]
+        title_key = (old.get("title") or "").strip().casefold()
+        if title_key:
+            identifiers.append(title_key)
+        if identifiers and not any(key in seen for key in identifiers):
+            result.append(old)
+            seen.update(identifiers)
+    return result
+
+
 def sync_goodreads():
-    """Sync public Goodreads shelf RSS feeds; keep existing data if a feed fails."""
+    """Use the user's base reviews RSS and updates RSS; preserve all existing shelf data."""
     user_id = os.environ.get("GOODREADS_USER_ID", "204602920").strip()
     if not user_id.isdigit():
         print("Goodreads skipped: GOODREADS_USER_ID must be the numeric profile ID.")
         return
     current = load_json("books.json", {"read": [], "currentlyReading": [], "wantToRead": []})
-    shelf_map = {
-        "read": ("read", "Read"),
-        "currently-reading": ("currentlyReading", "Currently Reading"),
-        "to-read": ("wantToRead", "Want to Read"),
-    }
+    for key in ("read", "currentlyReading", "wantToRead"):
+        current.setdefault(key, [])
+
     any_success = False
-    for shelf, (target_key, status_label) in shelf_map.items():
-        url = f"https://www.goodreads.com/review/list_rss/{user_id}?shelf={urllib.parse.quote(shelf)}&per_page=200"
-        try:
-            raw = request(url, headers={"Accept": "application/rss+xml, application/xml, text/xml"})
-            root = ET.fromstring(raw)
-            channel = root.find("channel")
-            if channel is None:
-                raise RuntimeError("RSS response had no channel")
-            entries = []
-            for node in channel.findall("item"):
-                title = (node.findtext("title") or "").strip()
-                link = (node.findtext("link") or "").strip()
-                if not title:
-                    continue
-                def field(name):
-                    found = node.find(name)
-                    if found is None or found.text is None: return ""
-                    return html_lib.unescape(found.text.strip())
-                book_id = field("book_id") or ""
-                author = field("author_name") or field("author")
-                cover = field("book_image_url") or field("book_large_image_url") or field("book_medium_image_url")
-                rating_text = field("user_rating")
-                try: rating = int(float(rating_text)) if rating_text else None
-                except ValueError: rating = None
-                year_text = field("book_published") or field("original_publication_year")
-                match = re.search(r"\b(?:18|19|20)\d{2}\b", year_text)
-                year = int(match.group(0)) if match else None
-                entries.append({
-                    "source": "goodreads", "sourceId": book_id or link or title.casefold(),
-                    "title": title, "author": author, "year": year,
-                    "url": link, "coverUrl": cover, "rating": rating,
-                    "status": status_label, "goodreadsShelf": shelf,
-                    "kindLabel": "GOODREADS"
-                })
-            if not entries:
-                print(f"Goodreads {shelf}: feed returned no books; existing shelf preserved.")
-                continue
-            # Match export records by title so the first RSS run enriches rather than duplicates them.
-            existing = current.get(target_key, [])
-            old_by_title = {(b.get("title") or "").strip().casefold(): b for b in existing if isinstance(b, dict)}
-            merged_entries = []
-            seen_titles = set()
-            personal_fields = ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape")
-            for fresh in entries:
-                key = (fresh.get("title") or "").strip().casefold()
-                old = old_by_title.get(key, {})
-                merged = dict(old)
-                merged.update({k: v for k, v in fresh.items() if v not in (None, "")})
-                for field in personal_fields:
-                    if old.get(field) not in (None, ""):
-                        merged[field] = old[field]
-                merged_entries.append(merged)
-                seen_titles.add(key)
-            # RSS may only expose a limited window; keep older export/history entries.
-            for old in existing:
-                key = (old.get("title") or "").strip().casefold() if isinstance(old, dict) else ""
-                if key and key not in seen_titles:
-                    merged_entries.append(old)
-            current[target_key] = merged_entries
-            print(f"Goodreads {shelf}: merged {len(entries)} feed entries; total {len(current[target_key])}.")
+    reviews_url = f"https://www.goodreads.com/review/list_rss/{user_id}"
+    try:
+        entries = _goodreads_rss_entries(reviews_url)
+        if entries:
+            current["read"] = _merge_goodreads_books(current["read"], entries, "Read", "read")
+            print(f"Goodreads reviews RSS: merged {len(entries)} entries; read shelf total {len(current['read'])}.")
             any_success = True
-        except Exception as exc:
-            print(f"Goodreads {shelf} RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
+        else:
+            print("Goodreads reviews RSS returned no books; existing book data preserved.")
+    except Exception as exc:
+        print(f"Goodreads reviews RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
+
+    # The updates feed is an activity stream, not a complete shelf listing. Read it
+    # separately for diagnostics; do not misclassify activity items as shelf records.
+    updates_url = f"https://www.goodreads.com/user/updates_rss/{user_id}"
+    try:
+        updates = _goodreads_rss_entries(updates_url)
+        print(f"Goodreads updates RSS: fetched {len(updates)} recent activity entries (activity feed only).")
+        any_success = True
+    except Exception as exc:
+        print(f"Goodreads updates RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
+
     if any_success:
         current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         current["source"] = "goodreads-rss"
         save_json("books.json", current)
-
 
 def main():
     sync_letterboxd()
