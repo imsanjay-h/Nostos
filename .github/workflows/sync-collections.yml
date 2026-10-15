@@ -26,6 +26,7 @@ jobs:
         env:
           LETTERBOXD_USERNAME: ${{ vars.LETTERBOXD_USERNAME }}
           ANILIST_USERNAME: ${{ vars.ANILIST_USERNAME }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: python scripts/sync_collections.py
       - name: Commit collection updates
         run: |
