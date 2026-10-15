@@ -117,6 +117,46 @@
   .poster-card { transition: none !important; }
 }
 
-/* Goodreads cover art; generated typographic covers remain the fallback. */
-.book-cover.has-book-cover { padding: 0; overflow: hidden; background: #e8e1d5; }
-.book-cover-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Bookshelf poster alignment: consistent cover heights and title captions below */
+.bookshelf-grid {
+  align-items: start;
+}
+.bookshelf-grid .book-card {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  width: 100%;
+  height: 100%;
+}
+.bookshelf-grid .book-cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  flex: 0 0 auto;
+}
+.bookshelf-grid .book-card-caption {
+  min-height: 54px;
+  padding-top: 10px;
+  align-items: flex-start;
+}
+.bookshelf-grid .book-card-caption strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  max-height: 2.7em;
+}
+.bookshelf-grid .book-card-caption span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  line-height: 1.35;
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  .bookshelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 15px; }
+  .bookshelf-grid .book-cover { padding: 12px; }
+  .bookshelf-grid .book-card-caption { min-height: 50px; }
+}
