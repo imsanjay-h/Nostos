@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scheduled, idempotent sync for Nostos. Uses only Python's standard library."""
 import json
+from html.parser import HTMLParser
 import os
 import re
 import sys
@@ -11,7 +12,6 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
-from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
@@ -82,77 +82,110 @@ def merge_preserving_personal_fields(existing, incoming, key_fields=None):
     return result
 
 
-
 class WatchlistHTMLParser(HTMLParser):
-    """Extract film cards and next-page links from a public Letterboxd watchlist."""
+    """Extract film links from Letterboxd HTML without depending on one CSS class."""
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.entries = []
-        self.next_href = None
-        self._current = None
-        self._in_card = False
-        self._card_depth = 0
+        self.films = {}
+        self.current_anchor = None
+
+    @staticmethod
+    def attrs_dict(attrs):
+        return {key: value for key, value in attrs if key}
 
     def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-        classes = set((attrs.get("class") or "").split())
-        if tag == "a" and (attrs.get("rel") == "next" or "next" in classes):
-            self.next_href = attrs.get("href") or self.next_href
-        if tag == "div" and "film-poster" in classes:
-            slug = attrs.get("data-film-slug")
-            title = attrs.get("data-film-name") or attrs.get("data-film-title")
-            year = attrs.get("data-film-release-year") or attrs.get("data-film-year")
-            if slug and title:
-                self._current = {"source": "letterboxd", "sourceId": slug, "title": title,
-                    "year": int(year) if year and str(year).isdigit() else None,
-                    "url": f"https://letterboxd.com/film/{slug}/", "watchlist": True, "kindLabel": "WATCHLIST"}
-                self._in_card = True
-                self._card_depth = 1
-        elif self._in_card and tag == "div":
-            self._card_depth += 1
-        elif tag == "img" and self._in_card and self._current:
-            poster = attrs.get("src") or attrs.get("data-src") or attrs.get("data-original")
-            if poster and not poster.startswith("data:"):
-                self._current["posterUrl"] = poster
+        a = self.attrs_dict(attrs)
+        # Letterboxd has used data-film-slug/data-film-name on poster elements,
+        # but also plain film links. Accept either shape.
+        slug = a.get("data-film-slug")
+        href = a.get("href", "")
+        match = re.search(r"/film/([^/?#]+)/?", href)
+        if not slug and match:
+            slug = match.group(1)
+        if slug:
+            slug = slug.strip("/")
+            title = (a.get("data-film-name") or a.get("data-film-title") or
+                     a.get("aria-label") or a.get("title") or "").strip()
+            year_text = a.get("data-film-release-year") or a.get("data-film-year") or ""
+            year_match = re.search(r"\b(18|19|20)\d{2}\b", year_text)
+            year = int(year_match.group(0)) if year_match else None
+            poster = a.get("data-poster-url") or a.get("data-image") or a.get("src") or a.get("data-src")
+            existing = self.films.get(slug, {})
+            if title or not existing.get("title"):
+                existing["title"] = title or slug.replace("-", " ").title()
+            if year:
+                existing["year"] = year
+            if poster and poster.startswith(("https://", "http://")):
+                existing["posterUrl"] = poster
+            self.films[slug] = existing
+            if tag == "a":
+                self.current_anchor = slug
+        elif tag == "img" and self.current_anchor:
+            film = self.films.setdefault(self.current_anchor, {})
+            alt = (a.get("alt") or a.get("title") or "").strip()
+            if alt and (not film.get("title") or film["title"] == self.current_anchor.replace("-", " ").title()):
+                film["title"] = alt
+            poster = a.get("src") or a.get("data-src") or a.get("data-original")
+            if poster and poster.startswith(("https://", "http://")):
+                film["posterUrl"] = poster
 
     def handle_endtag(self, tag):
-        if tag == "div" and self._in_card and self._current:
-            self._card_depth -= 1
-            if self._card_depth <= 0:
-                self.entries.append(self._current)
-                self._current = None
-                self._in_card = False
-                self._card_depth = 0
+        if tag == "a":
+            self.current_anchor = None
 
 
 def scrape_public_watchlist(username):
-    """Read public watchlist pages without login; fail closed on blocked/error pages."""
-    page_url = f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/"
-    entries, seen_urls = [], set()
-    for page_number in range(1, 101):
-        url = page_url if page_number == 1 else f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/page/{page_number}/"
-        raw = request(url, headers={"Accept": "text/html,application/xhtml+xml"})
+    """Read public watchlist pages, stopping safely when pagination ends."""
+    all_films = {}
+    page = 1
+    while page <= 100:
+        if page == 1:
+            url = f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/"
+        else:
+            url = f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/page/{page}/"
+        try:
+            raw = request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": f"https://letterboxd.com/{urllib.parse.quote(username)}/",
+            })
+        except Exception as exc:
+            if page == 1:
+                raise RuntimeError(f"could not fetch public watchlist page 1: {exc}") from exc
+            print(f"Letterboxd watchlist: pagination stopped at page {page} ({exc}).")
+            break
         html = raw.decode("utf-8", errors="replace")
-        if "Sorry. We can't find the page" in html or "Just a moment" in html:
-            raise RuntimeError("Letterboxd returned an error or challenge page instead of the watchlist.")
+        lowered = html.lower()
+        if any(marker in lowered for marker in ("cf-chl-", "just a moment...", "verify you are human", "access denied")):
+            if page == 1:
+                raise RuntimeError("Letterboxd returned an anti-bot/challenge page to GitHub Actions")
+            break
         parser = WatchlistHTMLParser()
         parser.feed(html)
-        if not parser.entries and page_number == 1:
-            raise RuntimeError("Could not identify film cards on the public watchlist page; keeping existing data unchanged.")
-        for item in parser.entries:
-            if item["sourceId"] not in seen_urls:
-                entries.append(item)
-                seen_urls.add(item["sourceId"])
-        if not parser.next_href and len(parser.entries) < 1:
+        if not parser.films:
+            # A blank later page means pagination has ended; a blank first page
+            # is diagnostic and must not erase the existing collection.
+            if page == 1:
+                title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
+                page_title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "(no title)"
+                raise RuntimeError(f"no /film/ links or data-film-slug attributes found; HTTP page title: {page_title[:120]}; response size: {len(raw)} bytes")
             break
-        if not parser.next_href:
-            # Letterboxd pages commonly expose numbered pagination instead of rel=next.
-            if len(parser.entries) < 28:
-                break
+        before = len(all_films)
+        all_films.update(parser.films)
+        # The first page with no new film links is a safe end condition.
+        if len(all_films) == before:
+            break
+        page += 1
         time.sleep(0.25)
-    if not entries:
-        raise RuntimeError("No watchlist films were extracted; keeping existing data unchanged.")
-    return entries
+    if page > 100:
+        raise RuntimeError("watchlist pagination safety stop after 100 pages")
+    return [
+        {"source": "letterboxd", "sourceId": slug, "title": film.get("title") or slug.replace("-", " ").title(),
+         "year": film.get("year"), "url": f"https://letterboxd.com/film/{slug}/",
+         "posterUrl": film.get("posterUrl"), "watchlist": True, "kindLabel": "WATCHLIST"}
+        for slug, film in all_films.items()
+    ]
 
 
 def sync_letterboxd():
@@ -161,23 +194,20 @@ def sync_letterboxd():
         print("Letterboxd skipped: set repository variable LETTERBOXD_USERNAME.")
         return
     username = username.lstrip("@").strip("/")
-    encoded = urllib.parse.quote(username)
-    feeds = [(f"https://letterboxd.com/{encoded}/rss/", "items", False)]
     current = load_json("films.json", {"items": [], "watchlist": [], "tiers": []})
     current.setdefault("items", [])
     current.setdefault("watchlist", [])
     changed = False
-    for feed_url, destination, is_watchlist in feeds:
-        try:
-            xml_bytes = request(feed_url, headers={"Accept": "application/rss+xml, application/xml, text/xml"})
-            root = ET.fromstring(xml_bytes)
-        except Exception as exc:
-            print(f"Letterboxd feed unavailable ({feed_url}): {exc}", file=sys.stderr)
-            continue
+
+    # Diary remains on its working RSS feed. Do not use the watchlist RSS URL:
+    # Letterboxd does not reliably serve it to GitHub Actions.
+    feed_url = f"https://letterboxd.com/{urllib.parse.quote(username)}/rss/"
+    try:
+        xml_bytes = request(feed_url, headers={"Accept": "application/rss+xml, application/xml, text/xml"})
+        root = ET.fromstring(xml_bytes)
         channel = root.find("channel")
         if channel is None:
-            print(f"Letterboxd feed had no RSS channel ({feed_url}); leaving that collection untouched.", file=sys.stderr)
-            continue
+            raise RuntimeError("RSS response had no channel")
         entries = []
         for node in channel.findall("item"):
             title = (node.findtext("title") or "").strip()
@@ -190,33 +220,35 @@ def sync_letterboxd():
             year = int(year_match.group(0)) if year_match else None
             slug_match = re.search(r"letterboxd\.com/film/([^/]+)", link)
             source_id = slug_match.group(1) if slug_match else link.rstrip("/").split("/")[-1]
-            image_match = re.search(r"""<img[^>]+src=["']([^"']+)["']""", description, flags=re.IGNORECASE)
+            image_match = re.search(r"<img[^>]+src=[\"']([^\"']+)[\"']", description, flags=re.IGNORECASE)
             poster_url = image_match.group(1) if image_match else None
-            entries.append({
-                "source": "letterboxd", "sourceId": source_id, "title": title,
-                "year": year, "url": link, "loggedAt": pub_date, "posterUrl": poster_url,
-                "feedDescription": re.sub(r"<[^>]+>", " ", description).strip(),
-                "watchlist": is_watchlist,
-                "kindLabel": "WATCHLIST" if is_watchlist else "LETTERBOXD"
-            })
+            entries.append({"source": "letterboxd", "sourceId": source_id, "title": title,
+                            "year": year, "url": link, "loggedAt": pub_date, "posterUrl": poster_url,
+                            "feedDescription": re.sub(r"<[^>]+>", " ", description).strip(),
+                            "watchlist": False, "kindLabel": "LETTERBOXD"})
         if entries:
-            current[destination] = merge_preserving_personal_fields(current[destination], entries)
-            print(f"Letterboxd {destination}: merged {len(entries)} feed entries; total {len(current[destination])}.")
+            current["items"] = merge_preserving_personal_fields(current["items"], entries)
+            print(f"Letterboxd items: merged {len(entries)} feed entries; total {len(current['items'])}.")
             changed = True
         else:
-            print(f"Letterboxd {destination}: no feed entries returned; existing data preserved.")
-    # Letterboxd does not document a watchlist RSS endpoint. Try its public HTML page instead.
-    try:
-        watchlist_entries = scrape_public_watchlist(username)
-        current["watchlist"] = merge_preserving_personal_fields(current["watchlist"], watchlist_entries)
-        print(f"Letterboxd watchlist: scraped {len(watchlist_entries)} public page entries; total {len(current['watchlist'])}.")
-        changed = True
+            print("Letterboxd items: no feed entries returned; existing data preserved.")
     except Exception as exc:
-        print(f"Letterboxd watchlist sync unavailable: {exc}. Existing watchlist preserved.", file=sys.stderr)
+        print(f"Letterboxd diary feed unavailable: {exc}; existing diary data preserved.", file=sys.stderr)
+
+    try:
+        watchlist = scrape_public_watchlist(username)
+        if watchlist:
+            current["watchlist"] = merge_preserving_personal_fields(current["watchlist"], watchlist)
+            print(f"Letterboxd watchlist: synced {len(watchlist)} page entries; total {len(current['watchlist'])}.")
+            changed = True
+        else:
+            print("Letterboxd watchlist returned no films; existing watchlist preserved.")
+    except Exception as exc:
+        print(f"Letterboxd watchlist sync unavailable: {exc}; keeping existing data unchanged.", file=sys.stderr)
+
     if changed:
         current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         save_json("films.json", current)
-
 
 def anilist_query(username, chunk):
     query = """query ($name: String, $chunk: Int, $perChunk: Int) {
