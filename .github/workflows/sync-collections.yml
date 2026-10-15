@@ -26,13 +26,13 @@ jobs:
         env:
           LETTERBOXD_USERNAME: ${{ vars.LETTERBOXD_USERNAME }}
           ANILIST_USERNAME: ${{ vars.ANILIST_USERNAME }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          GOODREADS_USER_ID: 204602920
         run: python scripts/sync_collections.py
       - name: Commit collection updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/films.json data/anime.json
+          git add data/films.json data/anime.json data/books.json
           if git diff --cached --quiet; then
            echo "No collection changes to commit."
           else
