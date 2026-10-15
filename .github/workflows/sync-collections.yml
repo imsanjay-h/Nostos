@@ -36,6 +36,9 @@ jobs:
             echo "No collection changes to commit."
           else
             git commit -m "chore: sync Nostos collections"
-            git push
+            # Another workflow or a manual GitHub edit may have updated main
+            # after checkout. Rebase this sync commit on the latest remote.
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
           
