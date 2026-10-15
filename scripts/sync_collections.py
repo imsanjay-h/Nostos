@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scheduled, idempotent sync for Nostos. Uses only Python's standard library."""
 import json
+import html as html_lib
 from html.parser import HTMLParser
 import os
 import re
@@ -168,8 +169,31 @@ def scrape_public_watchlist(username):
             # is diagnostic and must not erase the existing collection.
             if page == 1:
                 title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
-                page_title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "(no title)"
-                raise RuntimeError(f"no /film/ links or data-film-slug attributes found; HTTP page title: {page_title[:120]}; response size: {len(raw)} bytes")
+                page_title = html_lib.unescape(re.sub(r"\s+", " ", title_match.group(1)).strip()) if title_match else "(no title)"
+                # Diagnostics are deliberately compact: reveal the HTML structure that
+                # GitHub Actions received without dumping the entire page into logs.
+                probes = {
+                    "literal /film/": r"/film/",
+                    "encoded film path": r"(?:%2F|&#0*47;|&sol;)film(?:%2F|&#0*47;|&sol;)",
+                    "data-film attributes": r"data-film-[\w-]+",
+                    "film-poster marker": r"film-poster",
+                    "poster-container marker": r"poster-container",
+                    "film slug marker": r"filmSlug|film_slug|film-slug",
+                    "JSON-LD script": r"application/ld\+json",
+                    "embedded state marker": r"__NEXT_DATA__|__INITIAL_STATE__|__APOLLO_STATE__",
+                }
+                counts = []
+                for label, pattern in probes.items():
+                    counts.append(f"{label}={len(re.findall(pattern, html, re.I))}")
+                print("Letterboxd watchlist diagnostics: " + "; ".join(counts))
+                for marker in ("data-film", "film-poster", "poster-container", "/film/", "watchlist"):
+                    match = re.search(re.escape(marker), html, re.I)
+                    if match:
+                        start = max(0, match.start() - 120)
+                        end = min(len(html), match.end() + 220)
+                        snippet = re.sub(r"\s+", " ", html[start:end]).strip()
+                        print(f"Letterboxd HTML sample [{marker}]: {snippet[:340]}")
+                raise RuntimeError(f"no recognised film entries; HTTP page title: {page_title[:120]}; response size: {len(raw)} bytes")
             break
         before = len(all_films)
         all_films.update(parser.films)
