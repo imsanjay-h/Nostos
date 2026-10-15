@@ -83,6 +83,26 @@ def merge_preserving_personal_fields(existing, incoming, key_fields=None):
     return result
 
 
+def merge_current_watchlist(existing, incoming):
+    """Refresh the watchlist to match Letterboxd while retaining personal fields on matching films."""
+    old_by_key = {stable_key(item): item for item in existing if isinstance(item, dict)}
+    result = []
+    seen = set()
+    personal_fields = ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape")
+    for fresh in incoming:
+        old = old_by_key.get(stable_key(fresh), {})
+        merged = dict(old)
+        merged.update({k: v for k, v in fresh.items() if v not in (None, "")})
+        for field in personal_fields:
+            if old.get(field) not in (None, ""):
+                merged[field] = old[field]
+        key = stable_key(merged)
+        if key not in seen:
+            result.append(merged)
+            seen.add(key)
+    return result
+
+
 class WatchlistHTMLParser(HTMLParser):
     """Extract film links from Letterboxd HTML without depending on one CSS class."""
     def __init__(self):
@@ -96,39 +116,44 @@ class WatchlistHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         a = self.attrs_dict(attrs)
-        # Letterboxd has used data-film-slug/data-film-name on poster elements,
-        # but also plain film links. Accept either shape.
-        slug = a.get("data-film-slug")
+        # Letterboxd watchlist cards can expose film identity on a wrapper via
+        # data-item-* attributes rather than on the <a href="..."> itself.
         href = a.get("href", "")
-        match = re.search(r"/film/([^/?#]+)/?", href)
-        if not slug and match:
-            slug = match.group(1)
-        if slug:
-            slug = slug.strip("/")
-            title = (a.get("data-film-name") or a.get("data-film-title") or
-                     a.get("aria-label") or a.get("title") or "").strip()
-            year_text = a.get("data-film-release-year") or a.get("data-film-year") or ""
-            year_match = re.search(r"\b(18|19|20)\d{2}\b", year_text)
-            year = int(year_match.group(0)) if year_match else None
-            poster = a.get("data-poster-url") or a.get("data-image") or a.get("src") or a.get("data-src")
-            existing = self.films.get(slug, {})
-            if title or not existing.get("title"):
-                existing["title"] = title or slug.replace("-", " ").title()
-            if year:
-                existing["year"] = year
-            if poster and poster.startswith(("https://", "http://")):
-                existing["posterUrl"] = poster
-            self.films[slug] = existing
-            if tag == "a":
-                self.current_anchor = slug
-        elif tag == "img" and self.current_anchor:
-            film = self.films.setdefault(self.current_anchor, {})
-            alt = (a.get("alt") or a.get("title") or "").strip()
-            if alt and (not film.get("title") or film["title"] == self.current_anchor.replace("-", " ").title()):
-                film["title"] = alt
-            poster = a.get("src") or a.get("data-src") or a.get("data-original")
-            if poster and poster.startswith(("https://", "http://")):
-                film["posterUrl"] = poster
+        item_link = a.get("data-item-link", "")
+        path = href or item_link
+        match = re.search(r"/film/([^/?#]+)/?", path)
+        slug = (a.get("data-film-slug") or a.get("data-item-slug") or
+                (match.group(1) if match else ""))
+        if not slug:
+            return
+
+        slug = slug.strip("/")
+        raw_title = (a.get("data-film-name") or a.get("data-film-title") or
+                     a.get("data-item-name") or a.get("aria-label") or
+                     a.get("title") or "").strip()
+        # Letterboxd's data-item-name commonly includes the release year, e.g.
+        # "Por Thozil (2023)". Keep the title clean and retain the year.
+        title = re.sub(r"\s*\(((?:18|19|20)\d{2})\)\s*$", "", raw_title).strip()
+        year_text = (a.get("data-film-release-year") or a.get("data-film-year") or
+                     a.get("data-item-name") or raw_title)
+        year_match = re.search(r"\b(18|19|20)\d{2}\b", year_text)
+        year = int(year_match.group(0)) if year_match else None
+        poster = (a.get("data-poster-url") or a.get("data-image-url") or
+                  a.get("data-image") or a.get("data-src") or a.get("src"))
+        # Do not save Letterboxd's known empty-poster placeholder as the film art.
+        if poster and ("empty-poster" in poster or not poster.startswith(("https://", "http://"))):
+            poster = None
+
+        existing = self.films.get(slug, {})
+        if title or not existing.get("title"):
+            existing["title"] = title or slug.replace("-", " ").title()
+        if year:
+            existing["year"] = year
+        if poster and not existing.get("posterUrl"):
+            existing["posterUrl"] = poster
+        self.films[slug] = existing
+        if tag == "a":
+            self.current_anchor = slug
 
     def handle_endtag(self, tag):
         if tag == "a":
@@ -262,7 +287,7 @@ def sync_letterboxd():
     try:
         watchlist = scrape_public_watchlist(username)
         if watchlist:
-            current["watchlist"] = merge_preserving_personal_fields(current["watchlist"], watchlist)
+            current["watchlist"] = merge_current_watchlist(current["watchlist"], watchlist)
             print(f"Letterboxd watchlist: synced {len(watchlist)} page entries; total {len(current['watchlist'])}.")
             changed = True
         else:
