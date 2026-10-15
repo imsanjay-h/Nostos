@@ -1,0 +1,594 @@
+#!/usr/bin/env python3
+"""Scheduled, idempotent sync for Nostos. Uses only Python's standard library."""
+import json
+import html as html_lib
+from html.parser import HTMLParser
+import os
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "data"
+USER_AGENT = "NostosCollectionSync/1.0 (+https://github.com/)"
+
+
+def load_json(name, fallback):
+    path = DATA / name
+    if not path.exists():
+        return fallback
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def save_json(name, value):
+    path = DATA / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(value, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
+def request(url, data=None, headers=None):
+    request_headers = {"User-Agent": USER_AGENT, "Accept": "*/*"}
+    if headers:
+        request_headers.update(headers)
+    body = data
+    req = urllib.request.Request(url, data=body, headers=request_headers, method="POST" if body is not None else "GET")
+    with urllib.request.urlopen(req, timeout=35) as response:
+        return response.read()
+
+
+def stable_key(item):
+    for field in ("sourceId", "id", "url", "link"):
+        value = item.get(field)
+        if value not in (None, ""):
+            return f"{field}:{value}"
+    title = item.get("title", "").strip().casefold()
+    year = item.get("year", "")
+    return f"title:{title}:{year}"
+
+
+def merge_preserving_personal_fields(existing, incoming, key_fields=None):
+    """Merge upstream facts without overwriting a user's tier, note, or local choices."""
+    old_by_key = {stable_key(item): item for item in existing if isinstance(item, dict)}
+    # Alias by canonical URL/id helps when the feed's title or year formatting changes.
+    result = []
+    seen = set()
+    for fresh in incoming:
+        old = old_by_key.get(stable_key(fresh), {})
+        merged = dict(old)
+        merged.update({k: v for k, v in fresh.items() if v not in (None, "")})
+        for field in ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape"):
+            if old.get(field) not in (None, ""):
+                merged[field] = old[field]
+        key = stable_key(merged)
+        if key not in seen:
+            result.append(merged)
+            seen.add(key)
+    # Keep previously imported history that isn't in a limited upstream feed.
+    for old in existing:
+        if not isinstance(old, dict):
+            continue
+        key = stable_key(old)
+        if key not in seen:
+            result.append(old)
+            seen.add(key)
+    return result
+
+
+def merge_current_watchlist(existing, incoming):
+    """Refresh the watchlist to match Letterboxd while retaining personal fields on matching films."""
+    old_by_key = {stable_key(item): item for item in existing if isinstance(item, dict)}
+    result = []
+    seen = set()
+    personal_fields = ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape")
+    for fresh in incoming:
+        old = old_by_key.get(stable_key(fresh), {})
+        merged = dict(old)
+        merged.update({k: v for k, v in fresh.items() if v not in (None, "")})
+        for field in personal_fields:
+            if old.get(field) not in (None, ""):
+                merged[field] = old[field]
+        key = stable_key(merged)
+        if key not in seen:
+            result.append(merged)
+            seen.add(key)
+    return result
+
+
+class WatchlistHTMLParser(HTMLParser):
+    """Extract film links from Letterboxd HTML without depending on one CSS class."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.films = {}
+        self.current_anchor = None
+
+    @staticmethod
+    def attrs_dict(attrs):
+        return {key: value for key, value in attrs if key}
+
+    def handle_starttag(self, tag, attrs):
+        a = self.attrs_dict(attrs)
+        # Letterboxd watchlist cards can expose film identity on a wrapper via
+        # data-item-* attributes rather than on the <a href="..."> itself.
+        href = a.get("href", "")
+        item_link = a.get("data-item-link", "")
+        path = href or item_link
+        match = re.search(r"/film/([^/?#]+)/?", path)
+        slug = (a.get("data-film-slug") or a.get("data-item-slug") or
+                (match.group(1) if match else ""))
+        if not slug:
+            return
+
+        slug = slug.strip("/")
+        raw_title = (a.get("data-film-name") or a.get("data-film-title") or
+                     a.get("data-item-name") or a.get("aria-label") or
+                     a.get("title") or "").strip()
+        # Letterboxd's data-item-name commonly includes the release year, e.g.
+        # "Por Thozil (2023)". Keep the title clean and retain the year.
+        title = re.sub(r"\s*\(((?:18|19|20)\d{2})\)\s*$", "", raw_title).strip()
+        year_text = (a.get("data-film-release-year") or a.get("data-film-year") or
+                     a.get("data-item-name") or raw_title)
+        year_match = re.search(r"\b(18|19|20)\d{2}\b", year_text)
+        year = int(year_match.group(0)) if year_match else None
+        poster = (a.get("data-poster-url") or a.get("data-image-url") or
+                  a.get("data-image") or a.get("data-src") or a.get("src"))
+        # Do not save Letterboxd's known empty-poster placeholder as the film art.
+        if poster and ("empty-poster" in poster or not poster.startswith(("https://", "http://"))):
+            poster = None
+
+        existing = self.films.get(slug, {})
+        if title or not existing.get("title"):
+            existing["title"] = title or slug.replace("-", " ").title()
+        if year:
+            existing["year"] = year
+        if poster and not existing.get("posterUrl"):
+            existing["posterUrl"] = poster
+        self.films[slug] = existing
+        if tag == "a":
+            self.current_anchor = slug
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.current_anchor = None
+
+
+def scrape_public_watchlist(username):
+    """Read public watchlist pages, stopping safely when pagination ends."""
+    all_films = {}
+    page = 1
+    while page <= 100:
+        if page == 1:
+            url = f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/"
+        else:
+            url = f"https://letterboxd.com/{urllib.parse.quote(username)}/watchlist/page/{page}/"
+        try:
+            raw = request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": f"https://letterboxd.com/{urllib.parse.quote(username)}/",
+            })
+        except Exception as exc:
+            if page == 1:
+                raise RuntimeError(f"could not fetch public watchlist page 1: {exc}") from exc
+            print(f"Letterboxd watchlist: pagination stopped at page {page} ({exc}).")
+            break
+        html = raw.decode("utf-8", errors="replace")
+        lowered = html.lower()
+        if any(marker in lowered for marker in ("cf-chl-", "just a moment...", "verify you are human", "access denied")):
+            if page == 1:
+                raise RuntimeError("Letterboxd returned an anti-bot/challenge page to GitHub Actions")
+            break
+        parser = WatchlistHTMLParser()
+        parser.feed(html)
+        if not parser.films:
+            # A blank later page means pagination has ended; a blank first page
+            # is diagnostic and must not erase the existing collection.
+            if page == 1:
+                title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
+                page_title = html_lib.unescape(re.sub(r"\s+", " ", title_match.group(1)).strip()) if title_match else "(no title)"
+                # Diagnostics are deliberately compact: reveal the HTML structure that
+                # GitHub Actions received without dumping the entire page into logs.
+                probes = {
+                    "literal /film/": r"/film/",
+                    "encoded film path": r"(?:%2F|&#0*47;|&sol;)film(?:%2F|&#0*47;|&sol;)",
+                    "data-film attributes": r"data-film-[\w-]+",
+                    "film-poster marker": r"film-poster",
+                    "poster-container marker": r"poster-container",
+                    "film slug marker": r"filmSlug|film_slug|film-slug",
+                    "JSON-LD script": r"application/ld\+json",
+                    "embedded state marker": r"__NEXT_DATA__|__INITIAL_STATE__|__APOLLO_STATE__",
+                }
+                counts = []
+                for label, pattern in probes.items():
+                    counts.append(f"{label}={len(re.findall(pattern, html, re.I))}")
+                print("Letterboxd watchlist diagnostics: " + "; ".join(counts))
+                for marker in ("data-film", "film-poster", "poster-container", "/film/", "watchlist"):
+                    match = re.search(re.escape(marker), html, re.I)
+                    if match:
+                        start = max(0, match.start() - 120)
+                        end = min(len(html), match.end() + 220)
+                        snippet = re.sub(r"\s+", " ", html[start:end]).strip()
+                        print(f"Letterboxd HTML sample [{marker}]: {snippet[:340]}")
+                raise RuntimeError(f"no recognised film entries; HTTP page title: {page_title[:120]}; response size: {len(raw)} bytes")
+            break
+        before = len(all_films)
+        all_films.update(parser.films)
+        # The first page with no new film links is a safe end condition.
+        if len(all_films) == before:
+            break
+        page += 1
+        time.sleep(0.25)
+    if page > 100:
+        raise RuntimeError("watchlist pagination safety stop after 100 pages")
+    return [
+        {"source": "letterboxd", "sourceId": slug, "title": film.get("title") or slug.replace("-", " ").title(),
+         "year": film.get("year"), "url": f"https://letterboxd.com/film/{slug}/",
+         "posterUrl": film.get("posterUrl"), "watchlist": True, "kindLabel": "WATCHLIST"}
+        for slug, film in all_films.items()
+    ]
+
+
+def sync_letterboxd():
+    username = os.environ.get("LETTERBOXD_USERNAME", "").strip()
+    if not username:
+        print("Letterboxd skipped: set repository variable LETTERBOXD_USERNAME.")
+        return
+    username = username.lstrip("@").strip("/")
+    current = load_json("films.json", {"items": [], "watchlist": [], "tiers": []})
+    current.setdefault("items", [])
+    current.setdefault("watchlist", [])
+    changed = False
+
+    # Diary remains on its working RSS feed. Do not use the watchlist RSS URL:
+    # Letterboxd does not reliably serve it to GitHub Actions.
+    feed_url = f"https://letterboxd.com/{urllib.parse.quote(username)}/rss/"
+    try:
+        xml_bytes = request(feed_url, headers={"Accept": "application/rss+xml, application/xml, text/xml"})
+        root = ET.fromstring(xml_bytes)
+        channel = root.find("channel")
+        if channel is None:
+            raise RuntimeError("RSS response had no channel")
+        entries = []
+        for node in channel.findall("item"):
+            title = (node.findtext("title") or "").strip()
+            link = (node.findtext("link") or "").strip()
+            description = (node.findtext("description") or "").strip()
+            pub_date = (node.findtext("pubDate") or "").strip()
+            if not title or not link:
+                continue
+            year_match = re.search(r"\b(18|19|20)\d{2}\b", title)
+            year = int(year_match.group(0)) if year_match else None
+            slug_match = re.search(r"letterboxd\.com/film/([^/]+)", link)
+            source_id = slug_match.group(1) if slug_match else link.rstrip("/").split("/")[-1]
+            image_match = re.search(r"<img[^>]+src=[\"']([^\"']+)[\"']", description, flags=re.IGNORECASE)
+            poster_url = image_match.group(1) if image_match else None
+            entries.append({"source": "letterboxd", "sourceId": source_id, "title": title,
+                            "year": year, "url": link, "loggedAt": pub_date, "posterUrl": poster_url,
+                            "feedDescription": re.sub(r"<[^>]+>", " ", description).strip(),
+                            "watchlist": False, "kindLabel": "LETTERBOXD"})
+        if entries:
+            current["items"] = merge_preserving_personal_fields(current["items"], entries)
+            print(f"Letterboxd items: merged {len(entries)} feed entries; total {len(current['items'])}.")
+            changed = True
+        else:
+            print("Letterboxd items: no feed entries returned; existing data preserved.")
+    except Exception as exc:
+        print(f"Letterboxd diary feed unavailable: {exc}; existing diary data preserved.", file=sys.stderr)
+
+    try:
+        watchlist = scrape_public_watchlist(username)
+        if watchlist:
+            current["watchlist"] = merge_current_watchlist(current["watchlist"], watchlist)
+            print(f"Letterboxd watchlist: synced {len(watchlist)} page entries; total {len(current['watchlist'])}.")
+            changed = True
+        else:
+            print("Letterboxd watchlist returned no films; existing watchlist preserved.")
+    except Exception as exc:
+        print(f"Letterboxd watchlist sync unavailable: {exc}; keeping existing data unchanged.", file=sys.stderr)
+
+    if changed:
+        current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        save_json("films.json", current)
+
+def anilist_query(username, chunk):
+    query = """query ($name: String, $chunk: Int, $perChunk: Int) {
+      MediaListCollection(userName: $name, type: ANIME, chunk: $chunk, perChunk: $perChunk) {
+        hasNextChunk
+        lists {
+          name
+          entries {
+            id status score progress repeat
+            notes
+            media {
+              id type format episodes
+              title { english romaji native }
+              coverImage { large }
+              startDate { year }
+              siteUrl
+            }
+          }
+        }
+      }
+    }"""
+    payload = json.dumps({"query": query, "variables": {"name": username, "chunk": chunk, "perChunk": 500}}).encode("utf-8")
+    raw = request("https://graphql.anilist.co", payload, {"Content-Type": "application/json", "Accept": "application/json"})
+    response = json.loads(raw.decode("utf-8"))
+    if response.get("errors"):
+        raise RuntimeError("AniList API returned errors: " + json.dumps(response["errors"])[:500])
+    return response.get("data", {}).get("MediaListCollection")
+
+
+def sync_anilist():
+    username = os.environ.get("ANILIST_USERNAME", "").strip()
+    if not username:
+        print("AniList skipped: set repository variable ANILIST_USERNAME.")
+        return
+    try:
+        entries = []
+        chunk = 1
+        while True:
+            collection = anilist_query(username, chunk)
+            if collection is None:
+                raise RuntimeError("AniList returned no collection. Check that the username is public and correct.")
+            page_entries = []
+            for group in collection.get("lists", []):
+                for entry in group.get("entries", []):
+                    media = entry.get("media") or {}
+                    title_data = media.get("title") or {}
+                    title = title_data.get("english") or title_data.get("romaji") or title_data.get("native") or "Untitled anime"
+                    status = entry.get("status", "")
+                    media_id = media.get("id")
+                    page_entries.append({
+                        "source": "anilist", "sourceId": media_id, "anilistEntryId": entry.get("id"),
+                        "title": title, "nativeTitle": title_data.get("native"),
+                        "year": (media.get("startDate") or {}).get("year"),
+                        "url": media.get("siteUrl"), "coverImage": (media.get("coverImage") or {}).get("large"),
+                        "status": status.replace("_", " ").title(), "statusCode": status,
+                        "score": entry.get("score"), "progress": entry.get("progress"),
+                        "episodes": media.get("episodes"), "format": media.get("format"),
+                        "note": entry.get("notes") or "", "kindLabel": "ANILIST"
+                    })
+            entries.extend(page_entries)
+            if not collection.get("hasNextChunk", False):
+                break
+            chunk += 1
+            if chunk > 100:
+                raise RuntimeError("Safety stop: AniList pagination exceeded 100 pages.")
+            time.sleep(0.3)
+        if not entries:
+            print("AniList returned an empty list; writing an empty synced collection.")
+        current = load_json("anime.json", {"watched": [], "watchlist": []})
+        old_all = (current.get("watched") or []) + (current.get("watchlist") or [])
+        merged = merge_preserving_personal_fields(old_all, entries)
+        watched_statuses = {"COMPLETED", "CURRENT", "REPEATING", "PAUSED", "DROPPED"}
+        watched = [item for item in merged if item.get("statusCode") in watched_statuses or (item.get("source") != "anilist" and not item.get("watchlist"))]
+        watchlist = [item for item in merged if item.get("statusCode") == "PLANNING" or item.get("watchlist") is True]
+        current["watched"] = watched
+        current["watchlist"] = watchlist
+        current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        save_json("anime.json", current)
+        print(f"AniList: synced {len(entries)} entries ({len(watched)} non-planning, {len(watchlist)} planning).")
+    except Exception as exc:
+        print(f"AniList sync failed: {exc}", file=sys.stderr)
+
+
+
+class _GoodreadsDescriptionParser(HTMLParser):
+    """Extract book metadata embedded in Goodreads updates-feed HTML."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.values = {"title": [], "author": [], "cover": [], "link": []}
+        self._active = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        classes = set((attrs.get("class") or "").split())
+        if tag == "img":
+            src = attrs.get("src") or attrs.get("data-src") or ""
+            if src and ("book" in " ".join(classes).lower() or "image" in " ".join(classes).lower() or "gr-assets" in src or "goodreads" in src):
+                self.values["cover"].append(src)
+            alt = (attrs.get("alt") or "").strip()
+            if alt and "booktitle" in {c.lower() for c in classes}:
+                self.values["title"].append(alt)
+        if tag == "a":
+            href = attrs.get("href") or ""
+            if href and re.search(r"/book/show/\d+", href):
+                self.values["link"].append(urllib.parse.urljoin("https://www.goodreads.com", href))
+            if "booktitle" in {c.lower() for c in classes}:
+                self._active = "title"
+            elif "authorname" in {c.lower() for c in classes}:
+                self._active = "author"
+        elif tag in ("span", "div"):
+            lower_classes = {c.lower() for c in classes}
+            if "booktitle" in lower_classes:
+                self._active = "title"
+            elif "authorname" in lower_classes:
+                self._active = "author"
+
+    def handle_data(self, data):
+        if self._active and data.strip():
+            self.values[self._active].append(data.strip())
+
+    def handle_endtag(self, tag):
+        if tag in ("a", "span", "div"):
+            self._active = None
+
+
+def _goodreads_rss_entries(url, updates_feed=False):
+    """Fetch Goodreads RSS. Updates feeds embed book details in HTML descriptions."""
+    raw = request(url, headers={
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    })
+    root = ET.fromstring(raw)
+    channel = root.find("channel")
+    if channel is None:
+        raise RuntimeError("RSS response had no channel")
+    entries = []
+    for node in channel.findall("item"):
+        item_title = html_lib.unescape((node.findtext("title") or "").strip())
+        link = (node.findtext("link") or "").strip()
+        description = node.findtext("description") or ""
+
+        def field(name):
+            found = node.find(name)
+            if found is None or found.text is None:
+                return ""
+            return html_lib.unescape(found.text.strip())
+
+        if updates_feed:
+            parser = _GoodreadsDescriptionParser()
+            try:
+                parser.feed(html_lib.unescape(description))
+            except Exception:
+                pass
+            title = " ".join(parser.values["title"]).strip()
+            author = " ".join(parser.values["author"]).strip()
+            book_link = next(iter(parser.values["link"]), "")
+            cover = next(iter(parser.values["cover"]), "")
+            # Some update items contain only a plain book link/title. Do not turn
+            # generic social updates into fake book records.
+            if not title:
+                match = re.search(r"/book/show/(\d+)(?:[-/?#]|$)", book_link or link)
+                if match:
+                    title = re.sub(r"\s*\|\s*Goodreads.*$", "", item_title).strip()
+            if not title or not (book_link or re.search(r"/book/show/\d+", link)):
+                continue
+            book_link = book_link or link
+            id_match = re.search(r"/book/show/(\d+)", book_link)
+            book_id = id_match.group(1) if id_match else ""
+            rating_match = re.search(r"(?:rated|rating)[^0-5]{0,20}([0-5])", html_lib.unescape(description), re.I)
+            rating = int(rating_match.group(1)) if rating_match else None
+            year = None
+            shelves = ""
+        else:
+            title = item_title
+            if not title:
+                continue
+            book_link = link
+            book_id = field("book_id")
+            author = field("author_name") or field("author")
+            cover = field("book_image_url") or field("book_large_image_url") or field("book_medium_image_url")
+            rating_text = field("user_rating")
+            try:
+                rating = int(float(rating_text)) if rating_text else None
+            except ValueError:
+                rating = None
+            year_text = field("book_published") or field("original_publication_year")
+            match = re.search(r"\b(?:18|19|20)\d{2}\b", year_text)
+            year = int(match.group(0)) if match else None
+            shelves = field("user_shelves") or field("shelves")
+
+        entries.append({
+            "source": "goodreads", "sourceId": book_id or book_link or title.casefold(),
+            "title": title, "author": author, "year": year,
+            "url": book_link, "coverUrl": cover, "rating": rating,
+            "goodreadsShelves": shelves, "kindLabel": "GOODREADS"
+        })
+    return entries
+
+def _merge_goodreads_books(existing, incoming, default_status, default_shelf):
+    """Merge RSS records by Goodreads ID/URL/title, preserving local notes and older exports."""
+    old_by_key = {}
+    for old in existing:
+        if not isinstance(old, dict):
+            continue
+        for key in (old.get("sourceId"), old.get("url"), (old.get("title") or "").strip().casefold()):
+            if key:
+                old_by_key[str(key).casefold()] = old
+    result = []
+    seen = set()
+    personal_fields = ("tier", "note", "review", "personalNote", "palette", "color", "ink", "shape")
+    for fresh in incoming:
+        keys = [str(fresh.get(k)).casefold() for k in ("sourceId", "url") if fresh.get(k)]
+        title_key = (fresh.get("title") or "").strip().casefold()
+        if title_key:
+            keys.append(title_key)
+        old = next((old_by_key[k] for k in keys if k in old_by_key), {})
+        merged = dict(old)
+        merged.update({k: v for k, v in fresh.items() if v not in (None, "", [])})
+        for field in personal_fields:
+            if old.get(field) not in (None, ""):
+                merged[field] = old[field]
+        merged.setdefault("status", default_status)
+        merged.setdefault("goodreadsShelf", default_shelf)
+        identifiers = [str(merged.get(k)).casefold() for k in ("sourceId", "url") if merged.get(k)]
+        if title_key:
+            identifiers.append(title_key)
+        if not any(key in seen for key in identifiers):
+            result.append(merged)
+        seen.update(identifiers)
+    # RSS is a limited recent window; never remove books from an export or earlier sync.
+    for old in existing:
+        if not isinstance(old, dict):
+            continue
+        identifiers = [str(old.get(k)).casefold() for k in ("sourceId", "url") if old.get(k)]
+        title_key = (old.get("title") or "").strip().casefold()
+        if title_key:
+            identifiers.append(title_key)
+        if identifiers and not any(key in seen for key in identifiers):
+            result.append(old)
+            seen.update(identifiers)
+    return result
+
+
+def sync_goodreads():
+    """Prefer the user's updates RSS; use reviews RSS as a secondary source if available."""
+    user_id = os.environ.get("GOODREADS_USER_ID", "204602920").strip()
+    if not user_id.isdigit():
+        print("Goodreads skipped: GOODREADS_USER_ID must be the numeric profile ID.")
+        return
+    current = load_json("books.json", {"read": [], "currentlyReading": [], "wantToRead": []})
+    for key in ("read", "currentlyReading", "wantToRead"):
+        current.setdefault(key, [])
+
+    any_success = False
+    updates_url = f"https://www.goodreads.com/user/updates_rss/{user_id}"
+    try:
+        updates = _goodreads_rss_entries(updates_url, updates_feed=True)
+        if updates:
+            # Activity RSS is only a recent window, so merge and never replace history.
+            current["read"] = _merge_goodreads_books(current["read"], updates, "Read", "read")
+            print(f"Goodreads updates RSS: merged {len(updates)} book entries; read shelf total {len(current['read'])}.")
+        else:
+            print("Goodreads updates RSS loaded but contained no parseable book entries; existing data preserved.")
+        any_success = True
+    except Exception as exc:
+        print(f"Goodreads updates RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
+
+    # Keep the reviews feed as a secondary source, but don't let its failure
+    # prevent the working updates feed from contributing recent book records.
+    reviews_url = f"https://www.goodreads.com/review/list_rss/{user_id}?shelf=%23ALL%23"
+    try:
+        entries = _goodreads_rss_entries(reviews_url)
+        if entries:
+            current["read"] = _merge_goodreads_books(current["read"], entries, "Read", "read")
+            print(f"Goodreads reviews RSS: merged {len(entries)} entries; read shelf total {len(current['read'])}.")
+            any_success = True
+        else:
+            print("Goodreads reviews RSS returned no books; existing data preserved.")
+    except Exception as exc:
+        print(f"Goodreads reviews RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
+
+    if any_success:
+        current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        current["source"] = "goodreads-rss"
+        save_json("books.json", current)
+
+def main():
+    sync_letterboxd()
+    sync_anilist()
+    sync_goodreads()
+
+
+if __name__ == "__main__":
+    main()
