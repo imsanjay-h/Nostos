@@ -542,47 +542,37 @@ def _merge_goodreads_books(existing, incoming, default_status, default_shelf):
 
 
 def sync_goodreads():
-    """Prefer the user's updates RSS; use reviews RSS as a secondary source if available."""
-    user_id = os.environ.get("GOODREADS_USER_ID", "204602920").strip()
-    if not user_id.isdigit():
-        print("Goodreads skipped: GOODREADS_USER_ID must be the numeric profile ID.")
+    """Merge the provided Goodreads account-export snapshot without risking data loss.
+
+    Goodreads returns HTTP 401 to both RSS URLs from GitHub Actions, so repeated
+    network requests cannot currently provide a reliable sync. The checked-in
+    data/goodreads-export.json snapshot is merged on each run until RSS access works.
+    """
+    snapshot_path = DATA / "goodreads-export.json"
+    if not snapshot_path.exists():
+        print("Goodreads snapshot missing: add data/goodreads-export.json; existing books preserved.")
         return
-    current = load_json("books.json", {"read": [], "currentlyReading": [], "wantToRead": []})
-    for key in ("read", "currentlyReading", "wantToRead"):
-        current.setdefault(key, [])
-
-    any_success = False
-    updates_url = f"https://www.goodreads.com/user/updates_rss/{user_id}"
     try:
-        updates = _goodreads_rss_entries(updates_url, updates_feed=True)
-        if updates:
-            # Activity RSS is only a recent window, so merge and never replace history.
-            current["read"] = _merge_goodreads_books(current["read"], updates, "Read", "read")
-            print(f"Goodreads updates RSS: merged {len(updates)} book entries; read shelf total {len(current['read'])}.")
-        else:
-            print("Goodreads updates RSS loaded but contained no parseable book entries; existing data preserved.")
-        any_success = True
-    except Exception as exc:
-        print(f"Goodreads updates RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
-
-    # Keep the reviews feed as a secondary source, but don't let its failure
-    # prevent the working updates feed from contributing recent book records.
-    reviews_url = f"https://www.goodreads.com/review/list_rss/{user_id}?shelf=%23ALL%23"
-    try:
-        entries = _goodreads_rss_entries(reviews_url)
-        if entries:
-            current["read"] = _merge_goodreads_books(current["read"], entries, "Read", "read")
-            print(f"Goodreads reviews RSS: merged {len(entries)} entries; read shelf total {len(current['read'])}.")
-            any_success = True
-        else:
-            print("Goodreads reviews RSS returned no books; existing data preserved.")
-    except Exception as exc:
-        print(f"Goodreads reviews RSS unavailable: {exc}; existing data preserved.", file=sys.stderr)
-
-    if any_success:
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        current = load_json("books.json", {"read": [], "currentlyReading": [], "wantToRead": []})
+        for key in ("read", "currentlyReading", "wantToRead"):
+            current.setdefault(key, [])
+            incoming = snapshot.get(key, [])
+            if not isinstance(incoming, list):
+                raise RuntimeError(f"snapshot field {key} is not a list")
+            current[key] = _merge_goodreads_books(current[key], incoming,
+                {"read":"Read", "currentlyReading":"Currently Reading", "wantToRead":"Want to Read"}[key],
+                {"read":"read", "currentlyReading":"currently-reading", "wantToRead":"to-read"}[key])
+        current["source"] = "goodreads-export"
         current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        current["source"] = "goodreads-rss"
         save_json("books.json", current)
+        print("Goodreads export snapshot: merged " + ", ".join(
+            f"{len(snapshot.get(key, []))} {label}" for key, label in
+            (("read", "read"), ("currentlyReading", "currently reading"), ("wantToRead", "to-read"))) +
+            f"; totals read={len(current['read'])}, currently-reading={len(current['currentlyReading'])}, to-read={len(current['wantToRead'])}.")
+        print("Goodreads live RSS paused: GitHub Actions receives HTTP 401 from both feeds; existing data is preserved.")
+    except Exception as exc:
+        print(f"Goodreads export sync failed: {exc}; existing data preserved.", file=sys.stderr)
 
 def main():
     sync_letterboxd()
