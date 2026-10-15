@@ -26,7 +26,7 @@
     const year = safe(item.year || item.releaseYear || item.startDate?.year || 'NOSTOS');
     const kind = safe(item.kindLabel || item.type || 'COLLECTED');
     const style = `--card-bg:${safe(item.color || bg)};--card-ink:${safe(item.ink || ink)};--card-shape:${safe(item.shape || shape)}`;
-    const image = item.tmdbPosterUrl || item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const image = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
     return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-year">${year}</span></div>`;
   }
   function createPoster(item, index = 0, collection = 'entry') {
@@ -124,7 +124,7 @@
     const [bg, ink, shape] = getPalette(item, index);
     const art = byId('modal-art');
     art.style.setProperty('--card-bg', item.color || bg); art.style.setProperty('--card-ink', item.ink || ink); art.style.setProperty('--card-shape', item.shape || shape);
-    const modalImage = item.tmdbPosterUrl || item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const modalImage = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
     art.innerHTML = `${modalImage ? `<img class="modal-image" src="${safe(modalImage)}" alt="" loading="lazy">` : ''}<span>${safe(getTitle(item))}</span>`;
     setText('modal-title', getTitle(item));
     let kicker = collection === 'films' ? 'FROM THE FILM ARCHIVE' : collection === 'anime' ? 'FROM THE ANIME ARCHIVE' : collection === 'books' ? 'FROM THE BOOKSHELF' : 'A CURRENT FAVOURITE';
@@ -170,7 +170,7 @@
       if (!items.length) { const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; target.appendChild(empty); return; }
       items.forEach((book, index) => {
         const [bg, ink, shape] = getPalette(book, index); const button = document.createElement('button'); button.type='button'; button.className='book-card'; button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
-        button.innerHTML = `<div class="book-cover"><span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span></div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
+        const cover = book.coverUrl || book.coverImage || book.image || ''; button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
         button.addEventListener('click', () => openModal(book,'books',index)); target.appendChild(button);
       });
     };
