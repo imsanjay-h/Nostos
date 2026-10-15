@@ -116,3 +116,7 @@
 @media (prefers-reduced-motion: reduce) {
   .poster-card { transition: none !important; }
 }
+
+/* Goodreads cover art; generated typographic covers remain the fallback. */
+.book-cover.has-book-cover { padding: 0; overflow: hidden; background: #e8e1d5; }
+.book-cover-image { display: block; width: 100%; height: 100%; object-fit: cover; }
