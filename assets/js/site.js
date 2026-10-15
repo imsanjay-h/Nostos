@@ -26,7 +26,7 @@
     const year = safe(item.year || item.releaseYear || item.startDate?.year || 'NOSTOS');
     const kind = safe(item.kindLabel || item.type || 'COLLECTED');
     const style = `--card-bg:${safe(item.color || bg)};--card-ink:${safe(item.ink || ink)};--card-shape:${safe(item.shape || shape)}`;
-    const image = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const image = item.tmdbPosterUrl || item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
     return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-year">${year}</span></div>`;
   }
   function createPoster(item, index = 0, collection = 'entry') {
@@ -124,7 +124,7 @@
     const [bg, ink, shape] = getPalette(item, index);
     const art = byId('modal-art');
     art.style.setProperty('--card-bg', item.color || bg); art.style.setProperty('--card-ink', item.ink || ink); art.style.setProperty('--card-shape', item.shape || shape);
-    const modalImage = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const modalImage = item.tmdbPosterUrl || item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
     art.innerHTML = `${modalImage ? `<img class="modal-image" src="${safe(modalImage)}" alt="" loading="lazy">` : ''}<span>${safe(getTitle(item))}</span>`;
     setText('modal-title', getTitle(item));
     let kicker = collection === 'films' ? 'FROM THE FILM ARCHIVE' : collection === 'anime' ? 'FROM THE ANIME ARCHIVE' : collection === 'books' ? 'FROM THE BOOKSHELF' : 'A CURRENT FAVOURITE';
