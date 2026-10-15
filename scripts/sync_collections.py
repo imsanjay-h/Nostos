@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scheduled, idempotent sync for Nostos. Uses only Python's standard library."""
 import json
+import difflib
 import html as html_lib
 from html.parser import HTMLParser
 import os
@@ -299,6 +300,96 @@ def sync_letterboxd():
         current["lastSyncedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         save_json("films.json", current)
 
+
+def tmdb_search_movie(title, year, api_key):
+    """Find a likely TMDB movie match by title and, when available, release year."""
+    # Letterboxd RSS titles can contain year/rating decorations; remove them before searching.
+    clean_title = re.sub(r"\s*,?\s*(?:18|19|20)\d{2}\s*(?:[-–—].*)?$", "", str(title or "")).strip()
+    clean_title = re.sub(r"\s*[★☆]+.*$", "", clean_title).strip()
+    if not clean_title:
+        return None
+    params = {"api_key": api_key, "query": clean_title, "include_adult": "false"}
+    if year:
+        params["year"] = str(year)
+    url = "https://api.themoviedb.org/3/search/movie?" + urllib.parse.urlencode(params)
+    raw = request(url, headers={"Accept": "application/json"})
+    payload = json.loads(raw.decode("utf-8"))
+    results = payload.get("results") or []
+    if not results and year:
+        # Some databases disagree on release year; retry by title alone.
+        params.pop("year", None)
+        url = "https://api.themoviedb.org/3/search/movie?" + urllib.parse.urlencode(params)
+        raw = request(url, headers={"Accept": "application/json"})
+        results = (json.loads(raw.decode("utf-8")).get("results") or [])
+    if not results:
+        return None
+
+    def normalized(value):
+        return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
+
+    target = normalized(clean_title)
+    # Prefer exact title + matching year, then closest title among matching-year results.
+    same_year = [item for item in results if year and str(item.get("release_date", ""))[:4] == str(year)]
+    candidates = same_year or results
+    def score(item):
+        names = [item.get("title", ""), item.get("original_title", "")]
+        similarity = max((difflib.SequenceMatcher(None, target, normalized(name)).ratio() for name in names), default=0)
+        return (1 if any(normalized(name) == target for name in names) else 0, similarity, float(item.get("popularity") or 0))
+    best = max(candidates, key=score)
+    if score(best)[1] < 0.55:
+        return None
+    poster_path = best.get("poster_path")
+    return {
+        "tmdbId": best.get("id"),
+        "tmdbPosterPath": poster_path,
+        "tmdbPosterUrl": f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None,
+        "tmdbTitle": best.get("title"),
+        "tmdbReleaseDate": best.get("release_date") or None,
+    }
+
+
+def enrich_tmdb_posters():
+    """Enrich film data with TMDB metadata, without overwriting personal fields."""
+    api_key = os.environ.get("TMDB_API_KEY", "").strip()
+    if not api_key:
+        print("TMDB skipped: add TMDB_API_KEY as a GitHub Actions repository secret.")
+        return
+    current = load_json("films.json", {"items": [], "watchlist": [], "tiers": []})
+    groups = [("items", current.get("items") or []), ("watchlist", current.get("watchlist") or [])]
+    # Match duplicate items by stable identity, then apply the same result to both lists.
+    cache = {}
+    matched = 0
+    failed = 0
+    for list_name, entries in groups:
+        for item in entries:
+            if not isinstance(item, dict):
+                continue
+            key = stable_key(item)
+            if item.get("tmdbId") and item.get("tmdbPosterPath"):
+                cache[key] = {field: item.get(field) for field in ("tmdbId", "tmdbPosterPath", "tmdbPosterUrl", "tmdbTitle", "tmdbReleaseDate") if item.get(field) not in (None, "")}
+                continue
+            if key in cache:
+                item.update(cache[key])
+                continue
+            try:
+                match = tmdb_search_movie(item.get("title"), item.get("year"), api_key)
+                if match:
+                    item.update({field: value for field, value in match.items() if value not in (None, "")})
+                    cache[key] = match
+                    matched += 1
+                    if matched % 25 == 0:
+                        print(f"TMDB: matched {matched} films so far.")
+                else:
+                    failed += 1
+                    cache[key] = {}
+            except Exception as exc:
+                failed += 1
+                # Don't log the request URL; it contains the API key.
+                print(f"TMDB lookup failed for {item.get('title', 'untitled')!r}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            time.sleep(0.15)
+    save_json("films.json", current)
+    print(f"TMDB posters: matched {matched} new film records; {failed} unmatched/failed lookups; collection saved.")
+
 def anilist_query(username, chunk):
     query = """query ($name: String, $chunk: Int, $perChunk: Int) {
       MediaListCollection(userName: $name, type: ANIME, chunk: $chunk, perChunk: $perChunk) {
@@ -383,6 +474,7 @@ def sync_anilist():
 
 def main():
     sync_letterboxd()
+    enrich_tmdb_posters()
     sync_anilist()
 
 
