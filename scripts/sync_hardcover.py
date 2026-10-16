@@ -11,12 +11,12 @@ QUERY = r'''query NostosMyLibrary {
     user_books {
       id
       rating
-      status { name }
+      status_id
       book {
         id
         title
         slug
-        cached_image(path: "url")
+        image { url }
         contributions { author { name } }
       }
     }
@@ -59,23 +59,25 @@ def clean_entry(entry):
     title = (book.get("title") or "").strip()
     if not title:
         return None
-    raw_status = entry.get("status")
-    if isinstance(raw_status, dict):
-        raw_status = raw_status.get("name", "")
-    status = str(raw_status or "").strip().lower().replace(" ", "_").replace("-", "_")
-    aliases = {
-        "read": "read", "completed": "read", "currently_reading": "currentlyReading",
-        "currently reading": "currentlyReading", "in_progress": "currentlyReading",
-        "want_to_read": "wantToRead", "to_read": "wantToRead", "planned": "wantToRead",
-        "dnf": "didNotFinish", "did_not_finish": "didNotFinish", "paused": "didNotFinish",
+    # Hardcover exposes the library status as status_id on user_books.
+    # IDs: 1=Want to Read, 2=Currently Reading, 3=Read, 4=Paused, 5=DNF, 6=Ignored.
+    status_ids = {
+        1: "wantToRead", 2: "currentlyReading", 3: "read",
+        4: "didNotFinish", 5: "didNotFinish", 6: "ignored",
     }
-    shelf = aliases.get(status, "wantToRead")
+    try:
+        status_id = int(entry.get("status_id"))
+    except (TypeError, ValueError):
+        status_id = 1
+    shelf = status_ids.get(status_id, "wantToRead")
+    if shelf == "ignored":
+        return None
     authors = []
     for contribution in book.get("contributions") or []:
         author = contribution.get("author") or {}
         if author.get("name") and author["name"] not in authors:
             authors.append(author["name"])
-    image = book.get("cached_image")
+    image = book.get("image")
     if isinstance(image, dict):
         image = image.get("url")
     try:
@@ -86,7 +88,7 @@ def clean_entry(entry):
         "source": "hardcover", "sourceId": book.get("id"), "userBookId": entry.get("id"),
         "title": title, "author": ", ".join(authors), "coverUrl": image or "",
         "url": ("https://hardcover.app/books/" + str(book.get("slug"))) if book.get("slug") else "",
-        "status": shelf, "rating": rating,
+        "status": shelf, "statusId": status_id, "rating": rating,
     }
 
 
