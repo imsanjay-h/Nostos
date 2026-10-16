@@ -1,0 +1,41 @@
+name: Sync Nostos books from Hardcover
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 */6 * * *' # About every six hours; GitHub may delay scheduled jobs.
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nostos-hardcover-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Nostos
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Fetch Hardcover library
+        env:
+          HARDCOVER_API_TOKEN: ${{ secrets.HARDCOVER_API_TOKEN }}
+        run: python scripts/sync_hardcover.py
+      - name: Commit updated book collection
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/books.json
+          if git diff --cached --quiet; then
+            echo "No book collection changes to commit."
+          else
+            git commit -m "chore: sync Hardcover book collection"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
