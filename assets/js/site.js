@@ -216,7 +216,13 @@
     const page = document.body.dataset.page;
     if (page === 'home') {
       setText('profile-intro', profile.intro);
-      fillPosterRow(byId('home-films'), films.items || [], 'films', 'YOUR NEXT FILM WILL LIVE HERE', 8);
+      // Home showcase is intentionally curated, separate from the full film archive.
+      // Add film sourceId values to data/profile.json -> featuredFilms when ready.
+      const featuredFilmIds = Array.isArray(profile.featuredFilms) ? profile.featuredFilms : [];
+      const featuredFilms = featuredFilmIds
+        .map(id => (films.items || []).find(item => item.sourceId === id))
+        .filter(Boolean);
+      fillPosterRow(byId('home-films'), featuredFilms, 'films', 'YOUR SELECTED FILMS WILL LIVE HERE');
       fillPosterRow(byId('home-anime'), anime.watched || [], 'anime', 'A WORLD TO DISCOVER', 3);
       renderBooksPreview(books);
     }
