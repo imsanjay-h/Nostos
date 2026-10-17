@@ -229,3 +229,25 @@ button, .menu-toggle { color: var(--ink); }
  .site-header .main-nav a{font-size:clamp(8px,2.55vw,10px);letter-spacing:-.025em;flex:0 1 auto;padding:8px 0 10px;white-space:nowrap}
  .site-header .main-nav a.active:after{margin-top:5px}
 }
+
+
+/* Home desktop audit: improve contrast on coloured feature panels. */
+.feature-films { color: #211b12; }
+.feature-films .feature-title-row h3 em { color: #211b12; }
+.feature-films .feature-top .text-link { color: #211b12; }
+.feature-films .feature-title-row p { opacity: 1; color: #302719; }
+.feature-anime { color: #211b12; }
+.feature-anime .feature-title-row h3 em,
+.feature-anime h3 em { color: #211b12; }
+.feature-anime .feature-top,
+.feature-anime > p,
+.feature-anime .text-link { color: #211b12; }
+.feature-books { color: #38232a; }
+.feature-books h3 em,
+.feature-books .text-link { color: #713747; }
+.feature-books .feature-top { color: #38232a; }
+.now-thought { color: #25213b; }
+.now-thought .tiny-label,
+.now-thought .now-symbol,
+.now-thought p,
+.now-thought .now-foot { color: #25213b; }
