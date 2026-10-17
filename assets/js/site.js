@@ -26,7 +26,7 @@
     const year = safe(item.year || item.releaseYear || item.startDate?.year || 'NOSTOS');
     const kind = safe(item.kindLabel || item.type || 'COLLECTED');
     const style = `--card-bg:${safe(item.color || bg)};--card-ink:${safe(item.ink || ink)};--card-shape:${safe(item.shape || shape)}`;
-    const image = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const image = item.posterUrl || item.tmdbPosterUrl || item.coverImage || item.image || item.coverUrl || '';
     return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-year">${year}</span></div>`;
   }
   function createPoster(item, index = 0, collection = 'entry') {
@@ -50,6 +50,18 @@
     shown.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
     setupPosterInteraction(element);
     setupAutoMotion(element);
+  }
+  function fillPosterGrid(element, items, collection, emptyLabel = 'NO ENTRIES YET') {
+    if (!element) return;
+    element.innerHTML = '';
+    if (!items.length) {
+      const empty = placeholder(emptyLabel);
+      empty.classList.add('grid-empty-card');
+      element.appendChild(empty);
+      return;
+    }
+    items.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
+    setupPosterInteraction(element);
   }
   // Automatic row motion. The viewport remains natively scrollable for touch.
   // Do not pause on every `scroll` event: programmatic scrollLeft changes also
@@ -124,7 +136,7 @@
     const [bg, ink, shape] = getPalette(item, index);
     const art = byId('modal-art');
     art.style.setProperty('--card-bg', item.color || bg); art.style.setProperty('--card-ink', item.ink || ink); art.style.setProperty('--card-shape', item.shape || shape);
-    const modalImage = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const modalImage = item.posterUrl || item.tmdbPosterUrl || item.coverImage || item.image || item.coverUrl || '';
     art.innerHTML = `${modalImage ? `<img class="modal-image" src="${safe(modalImage)}" alt="" loading="lazy">` : ''}<span>${safe(getTitle(item))}</span>`;
     setText('modal-title', getTitle(item));
     let kicker = collection === 'films' ? 'FROM THE FILM ARCHIVE' : collection === 'anime' ? 'FROM THE ANIME ARCHIVE' : collection === 'books' ? 'FROM THE BOOKSHELF' : 'A CURRENT FAVOURITE';
@@ -150,15 +162,15 @@
     tiers.forEach((tier, tierIndex) => {
       const section = document.createElement('section'); section.className = 'tier-block';
       const group = items.filter(item => item.tier === tier.id);
-      section.innerHTML = `<div class="tier-heading"><span class="tier-number">${safe(tier.number || String(tierIndex + 1).padStart(2,'0'))}</span><h2>${safe(tier.name)}</h2><p>${safe(tier.description || '')}</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
-      const row = section.querySelector('.poster-row');
-      fillPosterRow(row, group, 'films', 'NO FILMS IN THIS TIER YET'); container.appendChild(section);
+      section.innerHTML = `<div class="tier-heading"><span class="tier-number">${safe(tier.number || String(tierIndex + 1).padStart(2,'0'))}</span><h2>${safe(tier.name)}</h2><p>${safe(tier.description || '')}</p></div><div class="film-poster-grid"></div>`;
+      const grid = section.querySelector('.film-poster-grid');
+      fillPosterGrid(grid, group, 'films', 'NO FILMS IN THIS TIER YET'); container.appendChild(section);
     });
     const placedTierIds = new Set(tiers.map(tier => tier.id));
     const unplaced = items.filter(item => !item.tier || !placedTierIds.has(item.tier));
     const unsorted = document.createElement('section'); unsorted.className = 'tier-block';
-    unsorted.innerHTML = `<div class="tier-heading"><span class="tier-number">↳</span><h2>JUST LOGGED / NOT YET PLACED</h2><p>New imports land here until you decide where they belong. Nothing gets lost.</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
-    fillPosterRow(unsorted.querySelector('.poster-row'), unplaced, 'films', 'NEW FILMS WILL APPEAR HERE AFTER SYNC');
+    unsorted.innerHTML = `<div class="tier-heading"><span class="tier-number">↳</span><h2>JUST LOGGED / NOT YET PLACED</h2><p>New imports land here until you decide where they belong. Nothing gets lost.</p></div><div class="film-poster-grid"></div>`;
+    fillPosterGrid(unsorted.querySelector('.film-poster-grid'), unplaced, 'films', 'NEW FILMS WILL APPEAR HERE AFTER SYNC');
     container.appendChild(unsorted);
   }
   function renderBooks(data) {
@@ -226,7 +238,7 @@
       fillPosterRow(byId('home-anime'), anime.watched || [], 'anime', 'A WORLD TO DISCOVER', 3);
       renderBooksPreview(books);
     }
-    if (page === 'films') { renderFilmTiers(films); fillPosterRow(byId('film-watchlist'), films.watchlist || [], 'films', 'SAVE A FILM FOR LATER'); }
+    if (page === 'films') { renderFilmTiers(films); fillPosterGrid(byId('film-watchlist'), films.watchlist || [], 'films', 'SAVE A FILM FOR LATER'); }
     if (page === 'anime') renderAnime(anime);
     if (page === 'books') renderBooks(books);
     if (page === 'connect') renderConnect(profile);
