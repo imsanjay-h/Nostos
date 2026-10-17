@@ -221,13 +221,32 @@
     if (!books.length) { ['A BOOK TO REMEMBER','SOMETHING TO DISCOVER','A NEW PERSPECTIVE'].forEach((title,i) => { const el=document.createElement('div');el.className='book-spine';el.textContent=title;el.style.setProperty('--spine',palette[i][0]);target.appendChild(el); }); return; }
     books.forEach((book,i) => { const el=document.createElement('button');el.className='book-spine';el.type='button';el.textContent=getTitle(book);el.style.setProperty('--spine',book.color || palette[i%palette.length][0]);el.addEventListener('click',()=>openModal(book,'books',i));target.appendChild(el); });
   }
+  function fillPosterGrid(element, items, collection, emptyLabel) {
+    if (!element) return;
+    element.innerHTML = '';
+    element.classList.add('poster-grid');
+    if (!items.length) {
+      const empty = placeholder(emptyLabel);
+      empty.classList.add('poster-grid-empty');
+      element.appendChild(empty);
+      return;
+    }
+    items.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
+    setupPosterInteraction(element);
+  }
+  function renderAnimeLibrary(data, watchlist = false) {
+    const items = watchlist ? (data.watchlist || []) : (data.watched || []);
+    setText('anime-library-count', items.length.toLocaleString());
+    fillPosterGrid(byId('anime-library-grid'), items, 'anime',
+      watchlist ? 'YOUR NEXT WORLD IS WAITING' : 'YOUR FIRST WORLD WILL LIVE HERE');
+  }
   function renderAnime(data) {
     setText('anime-count', (data.watched || []).length.toLocaleString());
     const watchedTarget = byId('anime-watched');
     if (watchedTarget) {
       watchedTarget.innerHTML = '';
       const section = document.createElement('section'); section.className='tier-block';
-      section.innerHTML = `<div class="tier-heading"><span class="tier-number">01</span><h2>WATCHED / VISITED</h2><p>Stories and worlds you've spent time in. Notes appear only when you want them to.</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
+      section.innerHTML = `<div class="tier-heading"><span class="tier-number">01</span><h2>WATCHED / VISITED</h2><p>Stories and worlds you've spent time in. Notes appear only when you want them to.</p><a class="tier-see-all" href="anime-watched.html">See all <span aria-hidden="true">→</span></a></div><div class="marquee-window"><div class="poster-row"></div></div>`;
       fillPosterRow(section.querySelector('.poster-row'), data.watched || [], 'anime', 'YOUR FIRST WORLD WILL LIVE HERE'); watchedTarget.appendChild(section);
     }
     fillPosterRow(byId('anime-watchlist'), data.watchlist || [], 'anime', 'THE NEXT WORLD IS WAITING');
@@ -256,6 +275,8 @@
     if (page === 'films') { renderFilmTiers(films); fillPosterRow(byId('film-watchlist'), films.watchlist || [], 'films', 'SAVE A FILM FOR LATER'); }
     if (page === 'film-library') renderFilmLibrary(films);
     if (page === 'anime') renderAnime(anime);
+    if (page === 'anime-watched') renderAnimeLibrary(anime, false);
+    if (page === 'anime-watchlist') renderAnimeLibrary(anime, true);
     if (page === 'books') renderBooks(books);
     if (page === 'connect') renderConnect(profile);
     document.querySelectorAll('.modal-close').forEach(button => button.addEventListener('click', closeModal));
