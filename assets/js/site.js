@@ -19,6 +19,11 @@
   }
   function setText(id, text) { const element = byId(id); if (element && text !== undefined && text !== null) element.textContent = text; }
   function getTitle(item) { return item.title || item.name || 'Untitled entry'; }
+  function getPosterImage(item) {
+    if (item.posterUrl || item.coverImage || item.image || item.coverUrl || item.tmdbPosterUrl) return item.posterUrl || item.coverImage || item.image || item.coverUrl || item.tmdbPosterUrl;
+    if (item.tmdbPosterPath) return `https://image.tmdb.org/t/p/w500${item.tmdbPosterPath}`;
+    return '';
+  }
   function getPalette(item, index = 0) { return palette[(Number.isFinite(item.palette) ? item.palette : index) % palette.length]; }
   function cardArt(item, index = 0) {
     const [bg, ink, shape] = getPalette(item, index);
@@ -26,7 +31,7 @@
     const year = safe(item.year || item.releaseYear || item.startDate?.year || 'NOSTOS');
     const kind = safe(item.kindLabel || item.type || 'COLLECTED');
     const style = `--card-bg:${safe(item.color || bg)};--card-ink:${safe(item.ink || ink)};--card-shape:${safe(item.shape || shape)}`;
-    const image = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const image = getPosterImage(item);
     return `<div class="poster-art${image ? ' has-image' : ''}" style="${style}">${image ? `<img class="poster-image" src="${safe(image)}" alt="" loading="lazy">` : ''}<span class="poster-mark">${kind}</span><span class="poster-year">${year}</span></div>`;
   }
   function createPoster(item, index = 0, collection = 'entry') {
@@ -124,7 +129,7 @@
     const [bg, ink, shape] = getPalette(item, index);
     const art = byId('modal-art');
     art.style.setProperty('--card-bg', item.color || bg); art.style.setProperty('--card-ink', item.ink || ink); art.style.setProperty('--card-shape', item.shape || shape);
-    const modalImage = item.posterUrl || item.coverImage || item.image || item.coverUrl || '';
+    const modalImage = getPosterImage(item);
     art.innerHTML = `${modalImage ? `<img class="modal-image" src="${safe(modalImage)}" alt="" loading="lazy">` : ''}<span>${safe(getTitle(item))}</span>`;
     setText('modal-title', getTitle(item));
     let kicker = collection === 'films' ? 'FROM THE FILM ARCHIVE' : collection === 'anime' ? 'FROM THE ANIME ARCHIVE' : collection === 'books' ? 'FROM THE BOOKSHELF' : 'A CURRENT FAVOURITE';
@@ -150,7 +155,7 @@
     tiers.forEach((tier, tierIndex) => {
       const section = document.createElement('section'); section.className = 'tier-block';
       const group = items.filter(item => item.tier === tier.id);
-      section.innerHTML = `<div class="tier-heading"><span class="tier-number">${safe(tier.number || String(tierIndex + 1).padStart(2,'0'))}</span><h2>${safe(tier.name)}</h2><p>${safe(tier.description || '')}</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
+      section.innerHTML = `<div class="tier-heading"><span class="tier-number">${safe(tier.number || String(tierIndex + 1).padStart(2,'0'))}</span><div class="tier-title-line"><h2>${safe(tier.name)}</h2><a class="tier-see-all" href="films-${safe(tier.id)}.html" aria-label="See all films in ${safe(tier.name)}">See all <span aria-hidden="true">→</span></a></div><p>${safe(tier.description || '')}</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
       const row = section.querySelector('.poster-row');
       fillPosterRow(row, group, 'films', 'NO FILMS IN THIS TIER YET'); container.appendChild(section);
     });
@@ -160,6 +165,28 @@
     unsorted.innerHTML = `<div class="tier-heading"><span class="tier-number">↳</span><h2>JUST LOGGED / NOT YET PLACED</h2><p>New imports land here until you decide where they belong. Nothing gets lost.</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
     fillPosterRow(unsorted.querySelector('.poster-row'), unplaced, 'films', 'NEW FILMS WILL APPEAR HERE AFTER SYNC');
     container.appendChild(unsorted);
+  }
+  function renderFilmLibrary(data) {
+    const grid = byId('film-library-grid');
+    if (!grid) return;
+    const type = document.body.dataset.libraryType || 'tier';
+    const tierId = document.body.dataset.tierId || '';
+    const tiers = data.tiers || [];
+    const tier = tiers.find(entry => entry.id === tierId);
+    const items = type === 'watchlist' ? (data.watchlist || []) : (data.items || []).filter(item => item.tier === tierId);
+    const title = type === 'watchlist' ? 'STILL TO COME' : (tier ? tier.name : 'FILM COLLECTION');
+    const eyebrow = type === 'watchlist' ? 'THE WAITING ROOM / FULL LIST' : `${tier ? tier.number : ''} / FULL TIER COLLECTION`;
+    const description = type === 'watchlist' ? 'Every film you have saved for another evening.' : (tier ? tier.description : 'A complete shelf of films in this tier.');
+    setText('library-eyebrow', eyebrow);
+    setText('library-title', title);
+    setText('library-description', description);
+    setText('library-count', items.length.toLocaleString());
+    grid.innerHTML = '';
+    if (!items.length) {
+      const empty = document.createElement('p'); empty.className = 'film-grid-empty'; empty.textContent = type === 'watchlist' ? 'YOUR WATCHLIST WILL APPEAR HERE AFTER SYNC.' : 'NO FILMS HAVE BEEN PLACED IN THIS TIER YET.';
+      grid.appendChild(empty); return;
+    }
+    items.forEach((item, index) => grid.appendChild(createPoster(item, index, 'films')));
   }
   function renderBooks(data) {
     const grid = byId('book-grid'); const waiting = byId('book-watchlist'); const current = byId('book-current');
@@ -194,13 +221,32 @@
     if (!books.length) { ['A BOOK TO REMEMBER','SOMETHING TO DISCOVER','A NEW PERSPECTIVE'].forEach((title,i) => { const el=document.createElement('div');el.className='book-spine';el.textContent=title;el.style.setProperty('--spine',palette[i][0]);target.appendChild(el); }); return; }
     books.forEach((book,i) => { const el=document.createElement('button');el.className='book-spine';el.type='button';el.textContent=getTitle(book);el.style.setProperty('--spine',book.color || palette[i%palette.length][0]);el.addEventListener('click',()=>openModal(book,'books',i));target.appendChild(el); });
   }
+  function fillPosterGrid(element, items, collection, emptyLabel) {
+    if (!element) return;
+    element.innerHTML = '';
+    element.classList.add('poster-grid');
+    if (!items.length) {
+      const empty = placeholder(emptyLabel);
+      empty.classList.add('poster-grid-empty');
+      element.appendChild(empty);
+      return;
+    }
+    items.forEach((item, index) => element.appendChild(createPoster(item, index, collection)));
+    setupPosterInteraction(element);
+  }
+  function renderAnimeLibrary(data, watchlist = false) {
+    const items = watchlist ? (data.watchlist || []) : (data.watched || []);
+    setText('anime-library-count', items.length.toLocaleString());
+    fillPosterGrid(byId('anime-library-grid'), items, 'anime',
+      watchlist ? 'YOUR NEXT WORLD IS WAITING' : 'YOUR FIRST WORLD WILL LIVE HERE');
+  }
   function renderAnime(data) {
     setText('anime-count', (data.watched || []).length.toLocaleString());
     const watchedTarget = byId('anime-watched');
     if (watchedTarget) {
       watchedTarget.innerHTML = '';
       const section = document.createElement('section'); section.className='tier-block';
-      section.innerHTML = `<div class="tier-heading"><span class="tier-number">01</span><h2>WATCHED / VISITED</h2><p>Stories and worlds you've spent time in. Notes appear only when you want them to.</p></div><div class="marquee-window"><div class="poster-row"></div></div>`;
+      section.innerHTML = `<div class="tier-heading"><span class="tier-number">01</span><h2>WATCHED / VISITED</h2><p>Stories and worlds you've spent time in. Notes appear only when you want them to.</p><a class="tier-see-all" href="anime-watched.html">See all <span aria-hidden="true">→</span></a></div><div class="marquee-window"><div class="poster-row"></div></div>`;
       fillPosterRow(section.querySelector('.poster-row'), data.watched || [], 'anime', 'YOUR FIRST WORLD WILL LIVE HERE'); watchedTarget.appendChild(section);
     }
     fillPosterRow(byId('anime-watchlist'), data.watchlist || [], 'anime', 'THE NEXT WORLD IS WAITING');
@@ -216,12 +262,21 @@
     const page = document.body.dataset.page;
     if (page === 'home') {
       setText('profile-intro', profile.intro);
-      fillPosterRow(byId('home-films'), films.items || [], 'films', 'YOUR NEXT FILM WILL LIVE HERE', 8);
+      // Home showcase is intentionally curated, separate from the full film archive.
+      // Add film sourceId values to data/profile.json -> featuredFilms when ready.
+      const featuredFilmIds = Array.isArray(profile.featuredFilms) ? profile.featuredFilms : [];
+      const featuredFilms = featuredFilmIds
+        .map(id => (films.items || []).find(item => item.sourceId === id))
+        .filter(Boolean);
+      fillPosterRow(byId('home-films'), featuredFilms, 'films', 'YOUR SELECTED FILMS WILL LIVE HERE');
       fillPosterRow(byId('home-anime'), anime.watched || [], 'anime', 'A WORLD TO DISCOVER', 3);
       renderBooksPreview(books);
     }
     if (page === 'films') { renderFilmTiers(films); fillPosterRow(byId('film-watchlist'), films.watchlist || [], 'films', 'SAVE A FILM FOR LATER'); }
+    if (page === 'film-library') renderFilmLibrary(films);
     if (page === 'anime') renderAnime(anime);
+    if (page === 'anime-watched') renderAnimeLibrary(anime, false);
+    if (page === 'anime-watchlist') renderAnimeLibrary(anime, true);
     if (page === 'books') renderBooks(books);
     if (page === 'connect') renderConnect(profile);
     document.querySelectorAll('.modal-close').forEach(button => button.addEventListener('click', closeModal));
