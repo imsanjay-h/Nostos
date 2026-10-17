@@ -312,3 +312,6 @@ button, .menu-toggle { color: var(--ink); }
   opacity: 1;
   font-weight: 600;
 }
+
+/* Home desktop: keep the emphasized word "frame" readable on the sand anime card. */
+.feature-anime h3 em{color:#4b3a27}
