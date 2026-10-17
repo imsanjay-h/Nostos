@@ -381,3 +381,10 @@ button, .menu-toggle { color: var(--ink); }
 .anime-library-back:hover,.anime-library-back:focus-visible{color:var(--blue);border-color:var(--blue)}
 @media(max-width:1000px){.poster-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 14px}}
 @media(max-width:640px){.anime-library-summary{align-items:flex-start;flex-direction:column}.anime-library-count{align-items:flex-start}.poster-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 12px}.poster-grid .poster-art{padding:10px}.anime-library-content{padding-bottom:50px}}
+
+
+/* Books desktop audit: discreet see-all links aligned with each shelf heading. */
+.books-see-all { justify-self: end; align-self: start; white-space: nowrap; font-size: 11px; letter-spacing: .02em; }
+.bookshelf-section .section-heading { position: relative; }
+.bookshelf-section .section-heading .books-see-all, .watchlist-section .section-heading .books-see-all { grid-column: 3; grid-row: 1; }
+@media (max-width: 700px) { .books-see-all { justify-self: start; } .bookshelf-section .section-heading .books-see-all, .watchlist-section .section-heading .books-see-all { grid-column: 1 / -1; grid-row: auto; } }
