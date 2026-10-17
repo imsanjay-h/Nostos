@@ -211,3 +211,21 @@ button, .menu-toggle { color: var(--ink); }
 .about-page h2{font-size:clamp(25px,4vw,42px);letter-spacing:-.05em;margin:0 0 14px}
 .about-page .about-columns p{font-size:15px;line-height:1.9;color:var(--muted);margin:0}
 @media(max-width:760px){.site-header{padding:18px var(--gutter);display:block}.site-header .wordmark{display:inline-block;font-size:25px;margin-bottom:16px}.site-header .menu-toggle{display:none!important}.main-nav{display:flex!important;position:static;overflow-x:auto;gap:clamp(22px,7vw,44px);width:100%;padding:0 0 2px;background:transparent;border:0;flex-direction:row;align-items:center;scrollbar-width:none}.main-nav::-webkit-scrollbar{display:none}.main-nav a{font-size:14px;flex:0 0 auto;padding:8px 0 10px}.about-page .about-columns{grid-template-columns:1fr;gap:28px}}
+
+/* Shared Connect-style navigation: all links stay visible without horizontal scrolling. */
+.site-header{min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 5.2vw}
+.site-header .wordmark{font-size:17px;font-weight:800;letter-spacing:.16em;white-space:nowrap;line-height:1}
+.site-header .wordmark-dot{color:var(--blue);font-size:9px;vertical-align:top;margin-left:3px}
+.site-header .main-nav{display:flex;align-items:center;justify-content:space-between;gap:clamp(8px,2.2vw,30px);min-width:0}
+.site-header .main-nav a{font-size:12px;white-space:nowrap;flex:0 0 auto;padding:0;color:var(--muted)}
+.site-header .main-nav a:hover,.site-header .main-nav a.active{color:var(--ink)}
+.site-header .main-nav a.active:after{content:"";display:block;height:1px;background:var(--blue);margin-top:7px}
+.site-header .menu-toggle{display:none!important}
+@media(max-width:760px){
+ .site-header{min-height:0;display:block;padding:15px 5vw 12px}
+ .site-header .wordmark{display:inline-block;font-size:17px;margin:0 0 16px}
+ .site-header .main-nav{display:flex!important;position:static;overflow:visible;scrollbar-width:none;width:100%;padding:0;background:transparent;border:0;flex-direction:row;align-items:center;justify-content:space-between;gap:4px}
+ .site-header .main-nav::-webkit-scrollbar{display:none}
+ .site-header .main-nav a{font-size:clamp(8px,2.55vw,10px);letter-spacing:-.025em;flex:0 1 auto;padding:8px 0 10px;white-space:nowrap}
+ .site-header .main-nav a.active:after{margin-top:5px}
+}
