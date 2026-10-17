@@ -188,22 +188,65 @@
     }
     items.forEach((item, index) => grid.appendChild(createPoster(item, index, 'films')));
   }
+  function isManga(book) {
+    const classification = `${book.category || ''} ${book.format || ''} ${book.kind || ''} ${book.type || ''}`.toLowerCase();
+    if (/manga|graphic novel|comic book/.test(classification)) return true;
+    const title = getTitle(book).toLowerCase();
+    // Recognize volume-numbered manga editions and the user's currently logged Demon Slayer volumes.
+    return /\bvol(?:ume)?\.?\s*\d+/i.test(title) || /demon slayer:\s*kimetsu no yaiba/i.test(title);
+  }
   function renderBooks(data) {
-    const grid = byId('book-grid'); const waiting = byId('book-watchlist'); const current = byId('book-current');
-    const books = data.read || []; const inProgress = data.currentlyReading || []; const watch = data.wantToRead || [];
-    setText('book-count', (books.length + (data.currentlyReading || []).length + watch.length).toLocaleString());
+    const grid = byId('book-grid-books') || byId('book-grid');
+    const mangaGrid = byId('book-grid-manga');
+    const waiting = byId('book-watchlist');
+    const current = byId('book-current');
+    const read = data.read || [];
+    const manga = read.filter(isManga);
+    const books = read.filter(book => !isManga(book));
+    const inProgress = data.currentlyReading || [];
+    const watch = data.wantToRead || [];
+    setText('book-count', (read.length + inProgress.length + watch.length).toLocaleString());
     const draw = (target, items, emptyText) => {
-      if (!target) return; target.innerHTML = '';
-      if (!items.length) { const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; target.appendChild(empty); return; }
+      if (!target) return;
+      target.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; target.appendChild(empty); return;
+      }
       items.forEach((book, index) => {
-        const [bg, ink, shape] = getPalette(book, index); const button = document.createElement('button'); button.type='button'; button.className='book-card'; button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
-        const cover = book.coverUrl || book.coverImage || book.image || ''; button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
+        const [bg, ink] = getPalette(book, index);
+        const button = document.createElement('button'); button.type='button'; button.className='book-card';
+        button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
+        const cover = book.coverUrl || book.coverImage || book.image || '';
+        button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
         button.addEventListener('click', () => openModal(book,'books',index)); target.appendChild(button);
       });
     };
-    draw(grid, books, 'Your read books will live here. Import your Goodreads shelf when you are ready.');
+    draw(grid, books, 'Your books will live here as your reading archive grows.');
+    draw(mangaGrid, manga, 'Your manga volumes will appear here as you log them.');
     draw(current, inProgress, 'Books you are currently reading will appear here when your shelf is imported.');
     draw(waiting, watch, 'Your to-read list will have its own shelf here.');
+  }
+  function fillBookArchiveGrid(element, items, emptyText) {
+    if (!element) return;
+    element.innerHTML = '';
+    if (!items.length) { const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; element.appendChild(empty); return; }
+    items.forEach((book, index) => {
+      const [bg, ink] = getPalette(book, index); const button = document.createElement('button'); button.type='button'; button.className='book-card';
+      button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
+      const cover = book.coverUrl || book.coverImage || book.image || '';
+      button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
+      button.addEventListener('click', () => openModal(book,'books',index)); element.appendChild(button);
+    });
+  }
+  function renderBookLibrary(data, mode) {
+    const read = data.read || []; const watch = data.wantToRead || [];
+    let items = [];
+    if (mode === 'manga') items = read.filter(isManga);
+    else if (mode === 'watchlist') items = watch;
+    else items = read.filter(book => !isManga(book));
+    setText('book-library-count', items.length.toLocaleString());
+    fillBookArchiveGrid(byId('book-library-grid'), items,
+      mode === 'manga' ? 'YOUR MANGA SHELF WILL GROW HERE' : mode === 'watchlist' ? 'YOUR NEXT READ IS WAITING HERE' : 'YOUR BOOKSHELF WILL GROW HERE');
   }
   function renderConnect(profile) {
     const list = byId('social-links'); if (!list) return; list.innerHTML = '';
@@ -278,6 +321,9 @@
     if (page === 'anime-watched') renderAnimeLibrary(anime, false);
     if (page === 'anime-watchlist') renderAnimeLibrary(anime, true);
     if (page === 'books') renderBooks(books);
+    if (page === 'books-archive') renderBookLibrary(books, 'books');
+    if (page === 'manga') renderBookLibrary(books, 'manga');
+    if (page === 'books-watchlist') renderBookLibrary(books, 'watchlist');
     if (page === 'connect') renderConnect(profile);
     document.querySelectorAll('.modal-close').forEach(button => button.addEventListener('click', closeModal));
     const backdrop = byId('detail-modal'); if (backdrop) backdrop.addEventListener('click', event => { if (event.target === backdrop) closeModal(); });
