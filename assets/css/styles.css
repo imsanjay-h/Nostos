@@ -229,3 +229,86 @@ button, .menu-toggle { color: var(--ink); }
  .site-header .main-nav a{font-size:clamp(8px,2.55vw,10px);letter-spacing:-.025em;flex:0 1 auto;padding:8px 0 10px;white-space:nowrap}
  .site-header .main-nav a.active:after{margin-top:5px}
 }
+
+
+/* Home desktop audit: improve contrast on coloured feature panels. */
+.feature-films { color: #211b12; }
+.feature-films .feature-title-row h3 em { color: #211b12; }
+.feature-films .feature-top .text-link { color: #211b12; }
+.feature-films .feature-title-row p { opacity: 1; color: #302719; }
+.feature-anime { color: #211b12; }
+.feature-anime .feature-title-row h3 em,
+.feature-anime h3 em { color: #211b12; }
+.feature-anime .feature-top,
+.feature-anime > p,
+.feature-anime .text-link { color: #211b12; }
+.feature-books { color: #38232a; }
+.feature-books h3 em,
+.feature-books .text-link { color: #713747; }
+.feature-books .feature-top { color: #38232a; }
+.now-thought { color: #25213b; }
+.now-thought .tiny-label,
+.now-thought .now-symbol,
+.now-thought p,
+.now-thought .now-foot { color: #25213b; }
+
+/* Home desktop audit — warmer, more legible label colours on feature panels. */
+.feature-films,
+.feature-anime {
+  color: #4b3a27;
+}
+.feature-films .feature-top,
+.feature-anime .feature-top,
+.feature-films .feature-number,
+.feature-films .feature-label,
+.feature-anime .feature-number,
+.feature-anime .feature-label,
+.feature-films .feature-top .text-link,
+.feature-anime .feature-top .text-link,
+.feature-films .feature-title-row h3 em,
+.feature-anime .feature-title-row h3 em,
+.feature-anime h3 em,
+.feature-films .feature-title-row p,
+.feature-anime > p,
+.feature-anime .text-link {
+  color: #4b3a27;
+}
+.feature-films .feature-top,
+.feature-anime .feature-top {
+  font-weight: 600;
+}
+.feature-films .feature-title-row p {
+  opacity: 1;
+  color: #55432e;
+}
+.feature-books {
+  color: #693d49;
+}
+.feature-books .feature-top,
+.feature-books .feature-number,
+.feature-books .feature-label,
+.feature-books h3,
+.feature-books > p {
+  color: #693d49;
+}
+.feature-books h3 em,
+.feature-books .text-link {
+  color: #7a3448;
+}
+.feature-books .feature-top {
+  font-weight: 600;
+}
+.now-thought {
+  color: #40365f;
+}
+.now-thought .tiny-label,
+.now-thought .now-symbol,
+.now-thought p,
+.now-thought .now-foot {
+  color: #40365f;
+}
+.now-thought .tiny-label,
+.now-thought .now-foot {
+  opacity: 1;
+  font-weight: 600;
+}
