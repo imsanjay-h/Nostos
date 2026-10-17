@@ -18,3 +18,15 @@
 /* Brand-colour logo treatment for the secondary directory. */
 .directory-item.logo-only .directory-icon{background:#f1eadb;border-color:rgba(241,234,219,.35);box-shadow:0 2px 14px rgba(0,0,0,.16)}
 .directory-item.logo-only .directory-icon img{filter:none;mix-blend-mode:normal}
+
+
+/* Final polish: logo directory is a loose, borderless row of floating brand marks. */
+.directory-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(14px,2.5vw,34px);border:0;}
+.directory-item.logo-only{display:flex;justify-content:center;align-items:center;min-height:88px;padding:12px 4px;margin:0;border:0!important;border-radius:0;background:transparent;box-shadow:none;}
+.directory-item.logo-only:hover{background:transparent;transform:translateY(-3px);}
+.directory-item.logo-only .directory-icon{display:grid;place-items:center;width:54px;height:54px;flex:0 0 54px;border:0!important;border-radius:0;background:transparent;box-shadow:none;}
+.directory-item.logo-only .directory-icon img{display:block;width:34px;height:34px;max-width:100%;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.35));}
+.directory-item.logo-only[title="Threads"] .directory-icon img{filter:brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,.35));}
+.directory-item.logo-only:focus-visible{outline:2px solid var(--amber);outline-offset:5px;border-radius:4px;}
+@media(max-width:900px){.directory-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 20px;}}
+@media(max-width:600px){.directory-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px;}.directory-item.logo-only{min-height:70px;padding:8px 0;}.directory-item.logo-only .directory-icon{width:46px;height:46px;flex-basis:46px;}.directory-item.logo-only .directory-icon img{width:30px;height:30px;}}
