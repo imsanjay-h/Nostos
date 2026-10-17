@@ -317,48 +317,46 @@ button, .menu-toggle { color: var(--ink); }
 .collection-section .split-features .feature-anime h3 em{color:#493522 !important;}
 
 
-/* Films archive: each tier is a still, responsive poster shelf rather than a horizontal marquee. */
-.film-poster-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-  align-items: start;
-  gap: 26px 16px;
-  width: 100%;
-}
-.film-poster-grid .poster-card {
-  width: 100%;
-  min-width: 0;
-  flex: none;
-  transform: none;
-}
-.film-poster-grid .poster-art {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 2 / 3;
-}
-.film-poster-grid .poster-card:hover {
-  transform: translateY(-5px);
-}
-.film-poster-grid .grid-empty-card {
-  grid-column: 1 / -1;
-  width: 100%;
-  min-height: 110px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--line);
-  padding: 24px;
-  color: var(--muted);
-  font: 10px var(--mono);
-  text-align: center;
-}
-.watchlist-poster-grid { padding-top: 8px; }
-@media (min-width: 1200px) {
-  .film-poster-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 30px 18px; }
-}
-@media (max-width: 760px) {
-  .film-poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
-  .film-poster-grid .poster-caption { padding-top: 8px; }
-  .film-poster-grid .poster-caption-title { font-size: 10px; }
-  .film-poster-grid .poster-caption-year { font-size: 8px; }
+/* Film archive upgrade: dedicated grid shelves, while the main page keeps its moving rows. */
+.tier-title-line{display:flex;align-items:center;justify-content:space-between;gap:18px;min-width:0;grid-column:2/4;grid-row:1}
+.tier-number{grid-column:1;grid-row:1/3}
+.tier-heading p{grid-column:3;grid-row:2}
+.tier-title-line h2{min-width:0}
+.tier-see-all{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;font:500 10px 'DM Mono',monospace;letter-spacing:.04em;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--line);padding:0 0 6px;transition:color .2s,border-color .2s}
+.tier-see-all span{font-size:14px;line-height:1}
+.tier-see-all:hover,.tier-see-all:focus-visible{color:var(--blue);border-color:var(--blue)}
+.watchlist-section .section-heading{align-items:end}
+.watchlist-see-all{margin-bottom:5px}
+.film-library-hero{padding-top:clamp(55px,8vw,105px);padding-bottom:34px}
+.film-library-hero .eyebrow{margin-bottom:24px}
+.film-library-hero h1{font-size:clamp(48px,8vw,112px);line-height:.92;letter-spacing:-.075em;margin:0;max-width:1050px}
+.film-library-hero h1 em{font-family:var(--serif);font-weight:500;color:var(--blue)}
+.film-library-summary{display:flex;align-items:end;justify-content:space-between;gap:28px;border-bottom:1px solid var(--line);padding:25px 0 28px;margin-top:30px}
+.film-library-summary p{max-width:520px;margin:0;color:var(--muted);font-size:14px;line-height:1.8}
+.film-library-count{display:flex;align-items:end;gap:10px;flex:0 0 auto}
+.film-library-count strong{font:500 38px/.9 var(--serif)}
+.film-library-count span{font:9px/1.5 var(--mono);letter-spacing:.07em;color:var(--muted);max-width:100px}
+.film-library-main{padding-top:30px;padding-bottom:70px}
+.film-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:28px 16px;align-items:start}
+.film-grid .poster-card{width:100%;min-width:0;flex:none}
+.film-grid .poster-art{height:auto;aspect-ratio:2/3}
+.film-grid .poster-caption{min-width:0;align-items:start;gap:6px}
+.film-grid .poster-caption-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.4}
+.film-grid .poster-caption-year{flex:0 0 auto}
+.film-grid-empty{grid-column:1/-1;border:1px dashed var(--line);padding:34px;color:var(--muted);font:10px/1.8 var(--mono);letter-spacing:.05em}
+.film-library-back{display:inline-flex;align-items:center;gap:9px;margin-top:20px;color:var(--muted);font-size:11px}
+.film-library-back:hover{color:var(--blue)}
+@media(max-width:760px){
+ .tier-title-line{gap:10px;align-items:center;grid-column:2;grid-row:1}
+ .tier-heading p{grid-column:2;grid-row:2}
+ .tier-number{grid-row:1/3}
+ .tier-title-line h2{font-size:clamp(22px,6.8vw,29px)}
+ .tier-see-all{font-size:9px;gap:4px}
+ .watchlist-section .section-heading{flex-direction:row;align-items:end;justify-content:space-between;gap:12px}
+ .watchlist-see-all{margin:0 0 5px}
+ .film-library-hero{padding-top:52px}
+ .film-library-hero h1{font-size:clamp(48px,12vw,78px)}
+ .film-library-summary{align-items:start;flex-direction:column;gap:20px;margin-top:24px}
+ .film-library-count strong{font-size:34px}
+ .film-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}
 }
