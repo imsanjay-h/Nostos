@@ -315,3 +315,50 @@ button, .menu-toggle { color: var(--ink); }
 
 /* Home desktop: keep only the emphasized word "frame" readable on the sand anime card. */
 .collection-section .split-features .feature-anime h3 em{color:#493522 !important;}
+
+
+/* Films archive: each tier is a still, responsive poster shelf rather than a horizontal marquee. */
+.film-poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  align-items: start;
+  gap: 26px 16px;
+  width: 100%;
+}
+.film-poster-grid .poster-card {
+  width: 100%;
+  min-width: 0;
+  flex: none;
+  transform: none;
+}
+.film-poster-grid .poster-art {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+.film-poster-grid .poster-card:hover {
+  transform: translateY(-5px);
+}
+.film-poster-grid .grid-empty-card {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line);
+  padding: 24px;
+  color: var(--muted);
+  font: 10px var(--mono);
+  text-align: center;
+}
+.watchlist-poster-grid { padding-top: 8px; }
+@media (min-width: 1200px) {
+  .film-poster-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 30px 18px; }
+}
+@media (max-width: 760px) {
+  .film-poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 14px; }
+  .film-poster-grid .poster-caption { padding-top: 8px; }
+  .film-poster-grid .poster-caption-title { font-size: 10px; }
+  .film-poster-grid .poster-caption-year { font-size: 8px; }
+}
