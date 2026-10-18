@@ -8,17 +8,29 @@ QUERY = r'''query NostosMyLibrary {
   me {
     id
     username
-    user_books {
-      id
-      rating
-      status_id
-      book {
-        id
-        title
-        slug
-        image { url }
-        contributions { author { name } }
-      }
+    currentlyReading: user_books(where: {status_id: {_eq: 2}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
+    }
+    read: user_books(where: {status_id: {_eq: 3}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
+    }
+    wantToRead: user_books(where: {status_id: {_eq: 1}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
+    }
+    paused: user_books(where: {status_id: {_eq: 4}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
+    }
+    didNotFinish: user_books(where: {status_id: {_eq: 5}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
+    }
+    ignored: user_books(where: {status_id: {_eq: 6}}, order_by: {updated_at: desc}, limit: 1000) {
+      id rating status_id
+      book { id title slug image { url } contributions { author { name } } }
     }
   }
 }'''
@@ -49,9 +61,21 @@ def fetch_library(token):
         me = me[0] if me else None
     if not me:
         raise RuntimeError("Hardcover returned no authenticated user. Check the token.")
-    if "user_books" not in me:
-        raise RuntimeError("Hardcover response did not include user_books; keeping existing books.json unchanged.")
-    return me, me.get("user_books") or []
+    shelves = ("currentlyReading", "read", "wantToRead", "paused", "didNotFinish", "ignored")
+    missing = [shelf for shelf in shelves if shelf not in me]
+    if missing:
+        raise RuntimeError(
+            "Hardcover response omitted status-specific shelves (" + ", ".join(missing) + "); "
+            "keeping existing books.json unchanged."
+        )
+    # Query each status explicitly so the currently-reading shelf cannot be
+    # hidden by the API's default relationship pagination/order.
+    raw_books = []
+    for shelf in shelves:
+        entries = me.get(shelf) or []
+        print(f"Hardcover API: received {len(entries)} entries for {shelf}.")
+        raw_books.extend(entries)
+    return me, raw_books
 
 
 def clean_entry(entry):
@@ -63,13 +87,17 @@ def clean_entry(entry):
     # IDs: 1=Want to Read, 2=Currently Reading, 3=Read, 4=Paused, 5=DNF, 6=Ignored.
     status_ids = {
         1: "wantToRead", 2: "currentlyReading", 3: "read",
-        4: "didNotFinish", 5: "didNotFinish", 6: "ignored",
+        4: "paused", 5: "didNotFinish", 6: "ignored",
     }
     try:
         status_id = int(entry.get("status_id"))
-    except (TypeError, ValueError):
-        status_id = 1
-    shelf = status_ids.get(status_id, "wantToRead")
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(
+            f"Hardcover entry for {title!r} did not include a valid status_id; refusing to guess its shelf."
+        ) from exc
+    if status_id not in status_ids:
+        raise RuntimeError(f"Hardcover returned unknown status_id {status_id} for {title!r}.")
+    shelf = status_ids[status_id]
     if shelf == "ignored":
         return None
     authors = []
@@ -108,6 +136,7 @@ def main():
         "read": [b for b in mapped if b["status"] == "read"],
         "currentlyReading": [b for b in mapped if b["status"] == "currentlyReading"],
         "wantToRead": [b for b in mapped if b["status"] == "wantToRead"],
+        "paused": [b for b in mapped if b["status"] == "paused"],
         "didNotFinish": [b for b in mapped if b["status"] == "didNotFinish"],
     }
     os.makedirs("data", exist_ok=True)
@@ -115,7 +144,12 @@ def main():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    print(f"Hardcover: synced {len(mapped)} books for @{result['username']} — {len(result['read'])} read, {len(result['currentlyReading'])} currently reading, {len(result['wantToRead'])} want to read, {len(result['didNotFinish'])} paused/DNF.")
+    print(
+        f"Hardcover: synced {len(mapped)} books for @{result['username']} — "
+        f"{len(result['currentlyReading'])} currently reading, {len(result['read'])} read, "
+        f"{len(result['wantToRead'])} want to read, {len(result['paused'])} paused, "
+        f"{len(result['didNotFinish'])} did not finish."
+    )
 
 if __name__ == "__main__":
     try:
