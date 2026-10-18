@@ -381,3 +381,138 @@ button, .menu-toggle { color: var(--ink); }
 .anime-library-back:hover,.anime-library-back:focus-visible{color:var(--blue);border-color:var(--blue)}
 @media(max-width:1000px){.poster-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 14px}}
 @media(max-width:640px){.anime-library-summary{align-items:flex-start;flex-direction:column}.anime-library-count{align-items:flex-start}.poster-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 12px}.poster-grid .poster-art{padding:10px}.anime-library-content{padding-bottom:50px}}
+
+
+/* Books desktop audit: discreet see-all links aligned with each shelf heading. */
+.books-see-all { justify-self: end; align-self: start; white-space: nowrap; font-size: 11px; letter-spacing: .02em; }
+.bookshelf-section .section-heading { position: relative; }
+.bookshelf-section .section-heading .books-see-all, .watchlist-section .section-heading .books-see-all { grid-column: 3; grid-row: 1; }
+@media (max-width: 700px) { .books-see-all { justify-self: start; } .bookshelf-section .section-heading .books-see-all, .watchlist-section .section-heading .books-see-all { grid-column: 1 / -1; grid-row: auto; } }
+
+
+/* Books main page: borderless poster shelves, with native touch scrolling and cursor lift.
+   Dedicated archive pages retain their normal grid layouts. */
+body[data-page="books"] .bookshelf-grid {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0 18px;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+}
+body[data-page="books"] .bookshelf-grid:active { cursor: grabbing; }
+body[data-page="books"] .bookshelf-grid::-webkit-scrollbar { display: none; }
+body[data-page="books"] .bookshelf-track {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(12px, 1.2vw, 16px);
+  width: max-content;
+  min-width: max-content;
+  transform: none;
+  will-change: scroll-position;
+}
+body[data-page="books"] .bookshelf-grid .book-card {
+  display: flex;
+  flex: 0 0 clamp(116px, 13vw, 170px);
+  width: clamp(116px, 13vw, 170px);
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  outline: none;
+  outline-offset: 4px;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  transform: translateY(calc(var(--book-lift, 0px) * -1));
+  transition: transform .22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+body[data-page="books"] .bookshelf-grid .book-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+body[data-page="books"] .bookshelf-grid .book-card-clone { pointer-events: none; }
+body[data-page="books"] .bookshelf-grid .book-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  height: auto;
+  flex: 0 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  transition: transform .22s ease;
+}
+body[data-page="books"] .bookshelf-grid .book-card:hover .book-cover { transform: scale(1.015); }
+body[data-page="books"] .bookshelf-grid .book-cover::after { display: none; }
+body[data-page="books"] .bookshelf-grid .book-cover-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+body[data-page="books"] .bookshelf-grid .book-cover-title,
+body[data-page="books"] .bookshelf-grid .book-cover-author {
+  position: relative;
+  z-index: 1;
+  padding: 12px;
+}
+body[data-page="books"] .bookshelf-grid .book-cover-title { font-size: clamp(19px, 2vw, 29px); line-height: .96; }
+body[data-page="books"] .bookshelf-grid .book-card-caption {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 0;
+  width: 100%;
+  padding: 10px 1px 0;
+  text-align: left;
+}
+body[data-page="books"] .bookshelf-grid .book-card-caption strong {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: none;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+body[data-page="books"] .bookshelf-grid .book-card-caption span { display: none; }
+body[data-page="books"] .bookshelf-grid .book-empty {
+  padding: 24px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  body[data-page="books"] .bookshelf-grid { padding-bottom: 14px; }
+  body[data-page="books"] .bookshelf-track { gap: 12px; }
+  body[data-page="books"] .bookshelf-grid .book-card { flex-basis: 116px; width: 116px; }
+  body[data-page="books"] .bookshelf-grid .book-card-caption { padding-top: 8px; }
+  body[data-page="books"] .bookshelf-grid .book-card-caption strong { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-page="books"] .bookshelf-grid .book-card { transition: none !important; }
+}
+
+
+/* Reliable shelf interaction: drag with a mouse, native horizontal swipes on touch. */
+body[data-page="books"] .bookshelf-grid { touch-action: pan-x pan-y; user-select: none; }
+body[data-page="books"] .bookshelf-grid.is-dragging { cursor: grabbing; scroll-behavior: auto; }
+body[data-page="books"] .bookshelf-grid.is-dragging * { cursor: grabbing !important; }
+body[data-page="books"] .bookshelf-grid .book-card { -webkit-user-select: none; user-select: none; }
+body[data-page="books"] .bookshelf-grid .book-cover-image { -webkit-user-drag: none; user-drag: none; }
