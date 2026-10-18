@@ -188,22 +188,194 @@
     }
     items.forEach((item, index) => grid.appendChild(createPoster(item, index, 'films')));
   }
+  function isManga(book) {
+    const classification = `${book.category || ''} ${book.format || ''} ${book.kind || ''} ${book.type || ''}`.toLowerCase();
+    if (/manga|graphic novel|comic book/.test(classification)) return true;
+    const title = getTitle(book).toLowerCase();
+    // Recognize volume-numbered manga editions and the user's currently logged Demon Slayer volumes.
+    return /\bvol(?:ume)?\.?\s*\d+/i.test(title) || /demon slayer:\s*kimetsu no yaiba/i.test(title);
+  }
   function renderBooks(data) {
-    const grid = byId('book-grid'); const waiting = byId('book-watchlist'); const current = byId('book-current');
-    const books = data.read || []; const inProgress = data.currentlyReading || []; const watch = data.wantToRead || [];
-    setText('book-count', (books.length + (data.currentlyReading || []).length + watch.length).toLocaleString());
+    const grid = byId('book-grid-books') || byId('book-grid');
+    const mangaGrid = byId('book-grid-manga');
+    const waiting = byId('book-watchlist');
+    const current = byId('book-current');
+    const read = data.read || [];
+    const manga = read.filter(isManga);
+    const books = read.filter(book => !isManga(book));
+    const inProgress = data.currentlyReading || [];
+    const watch = data.wantToRead || [];
+    setText('book-count', (read.length + inProgress.length + watch.length).toLocaleString());
     const draw = (target, items, emptyText) => {
-      if (!target) return; target.innerHTML = '';
-      if (!items.length) { const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; target.appendChild(empty); return; }
+      if (!target) return;
+      target.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; target.appendChild(empty); return;
+      }
       items.forEach((book, index) => {
-        const [bg, ink, shape] = getPalette(book, index); const button = document.createElement('button'); button.type='button'; button.className='book-card'; button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
-        const cover = book.coverUrl || book.coverImage || book.image || ''; button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
+        const [bg, ink] = getPalette(book, index);
+        const button = document.createElement('button'); button.type='button'; button.className='book-card';
+        button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
+        const cover = book.coverUrl || book.coverImage || book.image || '';
+        button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
         button.addEventListener('click', () => openModal(book,'books',index)); target.appendChild(button);
       });
     };
-    draw(grid, books, 'Your read books will live here. Import your Goodreads shelf when you are ready.');
+    draw(grid, books, 'Your books will live here as your reading archive grows.');
+    draw(mangaGrid, manga, 'Your manga volumes will appear here as you log them.');
     draw(current, inProgress, 'Books you are currently reading will appear here when your shelf is imported.');
     draw(waiting, watch, 'Your to-read list will have its own shelf here.');
+
+    // The main Books page uses the same continuous poster-shelf behavior as Movies.
+    // Dedicated archive pages keep their normal static grid layout.
+    [grid, mangaGrid, current, waiting].forEach(makeBookMarquee);
+  }
+  function makeBookMarquee(target) {
+    if (!target || target.dataset.marqueeReady === 'true') return;
+    const cards = Array.from(target.children).filter(child => child.classList.contains('book-card'));
+    if (cards.length < 2) return;
+    target.dataset.marqueeReady = 'true';
+    const track = document.createElement('div');
+    track.className = 'bookshelf-track';
+    cards.forEach(card => track.appendChild(card));
+    cards.forEach(card => {
+      const clone = card.cloneNode(true);
+      clone.classList.add('book-card-clone');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.tabIndex = -1;
+      clone.querySelectorAll('img').forEach(img => { img.loading = 'eager'; });
+      track.appendChild(clone);
+    });
+    target.appendChild(track);
+    setupBookShelfMotion(target, track);
+    setupBookCursorEffect(track);
+  }
+
+  // Keep the book shelves touch-scrollable while they drift automatically.
+  // User input pauses the drift so a swipe or tap never fights the animation.
+  function setupBookShelfMotion(viewport, track) {
+    if (!viewport || !track || viewport.dataset.bookMotion === 'true') return;
+    viewport.dataset.bookMotion = 'true';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let lastTime = 0;
+    let pausedUntil = performance.now() + 700;
+    let direction = 1;
+    let interacting = false;
+    const speed = 15;
+    const maxScroll = () => Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const pause = (ms = 1800) => { pausedUntil = performance.now() + ms; };
+    const begin = () => { interacting = true; pause(5000); };
+    const end = () => { interacting = false; pause(1800); lastTime = 0; };
+    viewport.addEventListener('pointerenter', () => pause(1600));
+    // Native swipe scrolling on touchscreens; click-and-drag on desktop.
+    // Keep the shelf usable even when the automatic drift is paused.
+    let dragStartX = 0;
+    let dragStartScroll = 0;
+    let dragging = false;
+    let movedByDrag = false;
+    let suppressClick = false;
+    viewport.addEventListener('pointerdown', event => {
+      begin();
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      dragStartX = event.clientX;
+      dragStartScroll = viewport.scrollLeft;
+      dragging = true;
+      movedByDrag = false;
+      viewport.classList.add('is-dragging');
+      try { viewport.setPointerCapture(event.pointerId); } catch (_) {}
+    });
+    viewport.addEventListener('pointermove', event => {
+      if (!dragging || event.pointerType !== 'mouse') return;
+      const delta = event.clientX - dragStartX;
+      if (Math.abs(delta) > 4) movedByDrag = true;
+      if (movedByDrag) {
+        event.preventDefault();
+        viewport.scrollLeft = dragStartScroll - delta;
+      }
+    });
+    const finishPointer = event => {
+      if (dragging && event && event.pointerType === 'mouse') {
+        suppressClick = movedByDrag;
+        dragging = false;
+        viewport.classList.remove('is-dragging');
+      }
+      end();
+    };
+    viewport.addEventListener('pointerup', finishPointer, { passive: true });
+    viewport.addEventListener('pointercancel', finishPointer, { passive: true });
+    viewport.addEventListener('click', event => {
+      if (!suppressClick) return;
+      event.preventDefault();
+      event.stopPropagation();
+      suppressClick = false;
+    }, true);
+    viewport.addEventListener('touchstart', begin, { passive: true });
+    viewport.addEventListener('touchend', end, { passive: true });
+    viewport.addEventListener('touchcancel', end, { passive: true });
+    viewport.addEventListener('wheel', () => pause(2200), { passive: true });
+    viewport.addEventListener('focusin', () => pause(5000));
+    viewport.addEventListener('keydown', event => {
+      if (['ArrowLeft','ArrowRight','Home','End','PageUp','PageDown',' '].includes(event.key)) pause(3000);
+    });
+    document.addEventListener('visibilitychange', () => { lastTime = 0; pause(1000); });
+    const tick = now => {
+      const max = maxScroll();
+      if (!document.hidden && !interacting && max > 8 && now >= pausedUntil && !viewport.matches(':hover') && !viewport.matches(':focus-within')) {
+        if (lastTime) {
+          const step = speed * Math.min((now - lastTime) / 1000, 0.05);
+          const next = viewport.scrollLeft + direction * step;
+          if (next >= max) { viewport.scrollLeft = max; direction = -1; pause(350); }
+          else if (next <= 0) { viewport.scrollLeft = 0; direction = 1; pause(350); }
+          else viewport.scrollLeft = next;
+        }
+      }
+      lastTime = now;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  // Match the subtle cursor-following lift used by the movie posters.
+  function setupBookCursorEffect(track) {
+    if (!track || track.dataset.bookCursor === 'true') return;
+    track.dataset.bookCursor = 'true';
+    const cards = () => Array.from(track.querySelectorAll('.book-card:not(.book-card-clone)'));
+    const clear = () => cards().forEach(card => card.style.setProperty('--book-lift', '0px'));
+    track.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+      const list = cards();
+      const hovered = event.target.closest('.book-card:not(.book-card-clone)');
+      if (!hovered) { clear(); return; }
+      const focusIndex = list.indexOf(hovered);
+      list.forEach((card, index) => {
+        const distance = Math.abs(index - focusIndex);
+        const lift = distance === 0 ? 13 : distance === 1 ? 6 : distance === 2 ? 2.5 : 0;
+        card.style.setProperty('--book-lift', `${lift}px`);
+      });
+    });
+    track.addEventListener('pointerleave', clear);
+  }
+
+  function fillBookArchiveGrid(element, items, emptyText) {
+    if (!element) return;
+    element.innerHTML = '';
+    if (!items.length) { const empty = document.createElement('div'); empty.className = 'book-empty'; empty.textContent = emptyText; element.appendChild(empty); return; }
+    items.forEach((book, index) => {
+      const [bg, ink] = getPalette(book, index); const button = document.createElement('button'); button.type='button'; button.className='book-card';
+      button.style.setProperty('--cover',book.color || bg); button.style.setProperty('--cover-ink',book.ink || ink);
+      const cover = book.coverUrl || book.coverImage || book.image || '';
+      button.innerHTML = `<div class="book-cover${cover ? ' has-book-cover' : ''}">${cover ? `<img class="book-cover-image" src="${safe(cover)}" alt="" loading="lazy">` : `<span class="book-cover-title">${safe(getTitle(book))}</span><span class="book-cover-author">${safe(book.author || 'A BOOK ON THE SHELF')}</span>`}</div><span class="book-card-caption"><strong>${safe(getTitle(book))}</strong><span>${safe(book.author || '')}</span></span>`;
+      button.addEventListener('click', () => openModal(book,'books',index)); element.appendChild(button);
+    });
+  }
+  function renderBookLibrary(data, mode) {
+    const read = data.read || []; const watch = data.wantToRead || [];
+    let items = [];
+    if (mode === 'manga') items = read.filter(isManga);
+    else if (mode === 'watchlist') items = watch;
+    else items = read.filter(book => !isManga(book));
+    setText('book-library-count', items.length.toLocaleString());
+    fillBookArchiveGrid(byId('book-library-grid'), items,
+      mode === 'manga' ? 'YOUR MANGA SHELF WILL GROW HERE' : mode === 'watchlist' ? 'YOUR NEXT READ IS WAITING HERE' : 'YOUR BOOKSHELF WILL GROW HERE');
   }
   function renderConnect(profile) {
     const list = byId('social-links'); if (!list) return; list.innerHTML = '';
@@ -278,6 +450,9 @@
     if (page === 'anime-watched') renderAnimeLibrary(anime, false);
     if (page === 'anime-watchlist') renderAnimeLibrary(anime, true);
     if (page === 'books') renderBooks(books);
+    if (page === 'books-archive') renderBookLibrary(books, 'books');
+    if (page === 'manga') renderBookLibrary(books, 'manga');
+    if (page === 'books-watchlist') renderBookLibrary(books, 'watchlist');
     if (page === 'connect') renderConnect(profile);
     document.querySelectorAll('.modal-close').forEach(button => button.addEventListener('click', closeModal));
     const backdrop = byId('detail-modal'); if (backdrop) backdrop.addEventListener('click', event => { if (event.target === backdrop) closeModal(); });
