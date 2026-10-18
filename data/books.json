@@ -318,32 +318,7 @@
       "rating": null
     }
   ],
-  "wantToRead": [
-    {
-      "source": "hardcover",
-      "sourceId": 431713,
-      "userBookId": 19653971,
-      "title": "The Metamorphosis",
-      "author": "Franz Kafka, Michael Hofmann",
-      "coverUrl": "https://assets.hardcover.app/edition/6343685/704cd849182f0351406e03434d2968ade757fde0.jpeg",
-      "url": "https://hardcover.app/books/the-metamorphosis",
-      "status": "wantToRead",
-      "statusId": 1,
-      "rating": null
-    },
-    {
-      "source": "hardcover",
-      "sourceId": 491325,
-      "userBookId": 19653955,
-      "title": "Circe and the Cyclops",
-      "author": "Homer",
-      "coverUrl": "https://assets.hardcover.app/edition/30438849/content.jpeg",
-      "url": "https://hardcover.app/books/circe-and-the-cyclops",
-      "status": "wantToRead",
-      "statusId": 1,
-      "rating": null
-    }
-  ],
+  "wantToRead": [],
   "paused": [],
   "didNotFinish": []
 }
