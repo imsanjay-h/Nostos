@@ -1,8 +1,258 @@
 {
-  "source": "hardcover",
+  "source": "goodreads-export",
   "username": "Gutts_1520",
-  "lastSyncedAt": "2026-10-19T07:27:59+00:00",
+  "lastSyncedAt": "2026-10-19T12:52:31+00:00",
   "read": [
+    {
+      "source": "goodreads",
+      "sourceId": "export:the odyssey",
+      "userBookId": 19653952,
+      "title": "The Odyssey",
+      "author": "Homer, Samuel Butler",
+      "coverUrl": "https://assets.hardcover.app/edition/6114921/6cf9eff4-26ad-4dba-9aee-99ccd22ed73f.jpg",
+      "url": "https://hardcover.app/books/the-odyssey",
+      "status": "Read",
+      "statusId": 3,
+      "rating": 5.0,
+      "goodreadsShelf": "read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:the iliad",
+      "userBookId": 19653972,
+      "title": "The Iliad",
+      "author": "Homer",
+      "coverUrl": "https://assets.hardcover.app/editions/30427811/9420789400127984.jpg",
+      "url": "https://hardcover.app/books/the-iliad",
+      "status": "Read",
+      "statusId": 3,
+      "rating": 5.0,
+      "goodreadsShelf": "read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:mahabharatam _full volume (tamil): மகாபாரதம் (முழு தொகுதி)",
+      "title": "Mahabharatam _full volume (Tamil): மகாபாரதம் (முழு தொகுதி)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:bagavad gita",
+      "userBookId": 19653960,
+      "title": "Bagavad Gita",
+      "author": "Krishna-Dwaipayana Vyasa, Sivananda Saraswati",
+      "coverUrl": "https://assets.hardcover.app/external_data/60336628/aaed81b4a1acc7f2d01f589ab1f10399ad9fe218.jpeg",
+      "url": "https://hardcover.app/books/bagavad-gita",
+      "status": "Read",
+      "statusId": 3,
+      "rating": 5.0,
+      "goodreadsShelf": "read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:ularaatha raththam",
+      "userBookId": 19653998,
+      "title": "Ularaatha Raththam",
+      "author": "Rajesh Kumar",
+      "coverUrl": "",
+      "url": "https://hardcover.app/books/ularaatha-raththam",
+      "status": "Read",
+      "statusId": 3,
+      "rating": 3.0,
+      "goodreadsShelf": "read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:kadaisi ethiri - maha sathi (2 novels combo) (tamil edition)",
+      "title": "Kadaisi Ethiri - Maha Sathi (2 Novels Combo) (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:சிவப்பின் நிறம் கருப்பு - sivappin niram karuppu (tamil edition)",
+      "title": "சிவப்பின் நிறம் கருப்பு - Sivappin Niram Karuppu (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:oru kodi rathirikal (tamil edition)",
+      "title": "Oru Kodi Rathirikal (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:demon slayer: kimetsu no yaiba, vol. 1",
+      "userBookId": 19653963,
+      "title": "Demon Slayer: Kimetsu no Yaiba, Vol. 1",
+      "author": "Koyoharu Gotouge",
+      "coverUrl": "https://assets.hardcover.app/external_data/61242045/3120bd2fa6875fe9efc93246386d680c1703e5f0.jpeg",
+      "url": "https://hardcover.app/books/demon-slayer-kimetsu-no-yaiba-vol-1",
+      "status": "Read",
+      "statusId": 3,
+      "rating": 5.0,
+      "goodreadsShelf": "read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 2 [kimetsu no yaiba 2]",
+      "title": "鬼滅の刃 2 [Kimetsu no Yaiba 2]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 3 [kimetsu no yaiba 3]",
+      "title": "鬼滅の刃 3 [Kimetsu no Yaiba 3]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 4 [kimetsu no yaiba 4]",
+      "title": "鬼滅の刃 4 [Kimetsu no Yaiba 4]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 5 [kimetsu no yaiba 5]",
+      "title": "鬼滅の刃 5 [Kimetsu no Yaiba 5]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 6 [kimetsu no yaiba 6]",
+      "title": "鬼滅の刃 6 [Kimetsu no Yaiba 6]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 7 [kimetsu no yaiba 7]",
+      "title": "鬼滅の刃 7 [Kimetsu no Yaiba 7]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 8 [kimetsu no yaiba 8]",
+      "title": "鬼滅の刃 8 [Kimetsu no Yaiba 8]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:鬼滅の刃 9 [kimetsu no yaiba 9]",
+      "title": "鬼滅の刃 9 [Kimetsu no Yaiba 9]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:meendum vivekin viswaroobam (tamil edition)",
+      "title": "Meendum Vivekin Viswaroobam (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:kiliyugam (tamil edition)",
+      "title": "Kiliyugam (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:uyir urugum satham (tamil edition)",
+      "title": "Uyir Urugum Satham (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:karunaagapura gramam - sivappin niram karuppu (tamil edition)",
+      "title": "Karunaagapura Gramam - Sivappin Niram Karuppu (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:garuda puranam (tamil) (tamil edition)",
+      "title": "Garuda Puranam (Tamil) (Tamil Edition)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 4.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:மோகினித் தீவு [mohini theevu]",
+      "title": "மோகினித் தீவு [Mohini Theevu]",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:வீரயுக நாயகன் வேள்பாரி (velpari)",
+      "title": "வீரயுக நாயகன் வேள்பாரி (Velpari)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:ponniyin selvan (all 5 parts together)",
+      "title": "Ponniyin Selvan (All 5 Parts Together)",
+      "status": "Read",
+      "goodreadsShelf": "read",
+      "rating": 5.0,
+      "kindLabel": "GOODREADS"
+    },
     {
       "source": "hardcover",
       "sourceId": 3049446,
@@ -77,18 +327,6 @@
     },
     {
       "source": "hardcover",
-      "sourceId": 3049452,
-      "userBookId": 19653998,
-      "title": "Ularaatha Raththam",
-      "author": "Rajesh Kumar",
-      "coverUrl": "",
-      "url": "https://hardcover.app/books/ularaatha-raththam",
-      "status": "read",
-      "statusId": 3,
-      "rating": 3.0
-    },
-    {
-      "source": "hardcover",
       "sourceId": 3049450,
       "userBookId": 19653992,
       "title": "Oru Kodi Rathirikal",
@@ -122,18 +360,6 @@
       "status": "read",
       "statusId": 3,
       "rating": 4.0
-    },
-    {
-      "source": "hardcover",
-      "sourceId": 428716,
-      "userBookId": 19653972,
-      "title": "The Iliad",
-      "author": "Homer",
-      "coverUrl": "https://assets.hardcover.app/editions/30427811/9420789400127984.jpg",
-      "url": "https://hardcover.app/books/the-iliad",
-      "status": "read",
-      "statusId": 3,
-      "rating": 5.0
     },
     {
       "source": "hardcover",
@@ -221,30 +447,6 @@
     },
     {
       "source": "hardcover",
-      "sourceId": 450675,
-      "userBookId": 19653963,
-      "title": "Demon Slayer: Kimetsu no Yaiba, Vol. 1",
-      "author": "Koyoharu Gotouge",
-      "coverUrl": "https://assets.hardcover.app/external_data/61242045/3120bd2fa6875fe9efc93246386d680c1703e5f0.jpeg",
-      "url": "https://hardcover.app/books/demon-slayer-kimetsu-no-yaiba-vol-1",
-      "status": "read",
-      "statusId": 3,
-      "rating": 5.0
-    },
-    {
-      "source": "hardcover",
-      "sourceId": 1175722,
-      "userBookId": 19653960,
-      "title": "Bagavad Gita",
-      "author": "Krishna-Dwaipayana Vyasa, Sivananda Saraswati",
-      "coverUrl": "https://assets.hardcover.app/external_data/60336628/aaed81b4a1acc7f2d01f589ab1f10399ad9fe218.jpeg",
-      "url": "https://hardcover.app/books/bagavad-gita",
-      "status": "read",
-      "statusId": 3,
-      "rating": 5.0
-    },
-    {
-      "source": "hardcover",
       "sourceId": 665522,
       "userBookId": 19653959,
       "title": "Demon Slayer: Kimetsu no Yaiba, Vol. 3",
@@ -290,18 +492,6 @@
       "status": "read",
       "statusId": 3,
       "rating": 5.0
-    },
-    {
-      "source": "hardcover",
-      "sourceId": 377036,
-      "userBookId": 19653952,
-      "title": "The Odyssey",
-      "author": "Homer, Samuel Butler",
-      "coverUrl": "https://assets.hardcover.app/edition/6114921/6cf9eff4-26ad-4dba-9aee-99ccd22ed73f.jpg",
-      "url": "https://hardcover.app/books/the-odyssey",
-      "status": "read",
-      "statusId": 3,
-      "rating": 5.0
     }
   ],
   "currentlyReading": [
@@ -320,28 +510,32 @@
   ],
   "wantToRead": [
     {
-      "source": "hardcover",
-      "sourceId": 431713,
-      "userBookId": 19653971,
-      "title": "The Metamorphosis",
-      "author": "Franz Kafka, Michael Hofmann",
-      "coverUrl": "https://assets.hardcover.app/edition/6343685/704cd849182f0351406e03434d2968ade757fde0.jpeg",
-      "url": "https://hardcover.app/books/the-metamorphosis",
-      "status": "wantToRead",
-      "statusId": 1,
-      "rating": null
-    },
-    {
-      "source": "hardcover",
-      "sourceId": 491325,
+      "source": "goodreads",
+      "sourceId": "export:circe and the cyclops",
       "userBookId": 19653955,
       "title": "Circe and the Cyclops",
       "author": "Homer",
       "coverUrl": "https://assets.hardcover.app/edition/30438849/content.jpeg",
       "url": "https://hardcover.app/books/circe-and-the-cyclops",
-      "status": "wantToRead",
+      "status": "Want to Read",
       "statusId": 1,
-      "rating": null
+      "rating": null,
+      "goodreadsShelf": "to-read",
+      "kindLabel": "GOODREADS"
+    },
+    {
+      "source": "goodreads",
+      "sourceId": "export:the metamorphosis",
+      "userBookId": 19653971,
+      "title": "The Metamorphosis",
+      "author": "Franz Kafka, Michael Hofmann",
+      "coverUrl": "https://assets.hardcover.app/edition/6343685/704cd849182f0351406e03434d2968ade757fde0.jpeg",
+      "url": "https://hardcover.app/books/the-metamorphosis",
+      "status": "Want to Read",
+      "statusId": 1,
+      "rating": null,
+      "goodreadsShelf": "to-read",
+      "kindLabel": "GOODREADS"
     }
   ],
   "paused": [],
