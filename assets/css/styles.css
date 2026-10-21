@@ -516,3 +516,75 @@ body[data-page="books"] .bookshelf-grid.is-dragging { cursor: grabbing; scroll-b
 body[data-page="books"] .bookshelf-grid.is-dragging * { cursor: grabbing !important; }
 body[data-page="books"] .bookshelf-grid .book-card { -webkit-user-select: none; user-select: none; }
 body[data-page="books"] .bookshelf-grid .book-cover-image { -webkit-user-drag: none; user-drag: none; }
+
+
+/* Shared navigation styling copied from the Connect page and adapted to the main site's header classes. */
+.site-header {
+  min-height: 82px;
+  padding: 0 5.2vw;
+  gap: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.site-header .wordmark {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.site-header .wordmark span,
+.site-header .wordmark-dot {
+  color: #d7a96a;
+  font-size: 9px;
+  vertical-align: top;
+  margin-left: 3px;
+}
+.site-header .main-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 3vw, 42px);
+}
+.site-header .main-nav a {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  transition: color .2s;
+}
+.site-header .main-nav a:hover,
+.site-header .main-nav a.active {
+  color: var(--ink);
+}
+.site-header .main-nav a.active {
+  font-weight: 400;
+}
+.site-header .main-nav a.active::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: #d7a96a;
+  margin-top: 7px;
+}
+.site-header .menu-toggle {
+  display: none;
+}
+@media (max-width: 900px) {
+  .site-header { padding-left: 4vw; padding-right: 4vw; }
+}
+@media (max-width: 600px) {
+  .site-header {
+    min-height: 68px;
+    flex-wrap: wrap;
+    gap: 13px;
+    padding: 15px 5vw 12px;
+  }
+  .site-header .wordmark { font-size: 15px; }
+  .site-header .main-nav {
+    order: 2;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .site-header .main-nav a { font-size: 10px; }
+  .site-header .main-nav a.active::after { margin-top: 5px; }
+  .site-header .menu-toggle { display: none; }
+}
