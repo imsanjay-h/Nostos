@@ -5,12 +5,12 @@ This package contains a page-scoped Connect redesign and six individual Nostos p
 ## Included
 - `connect.html` — six featured full-width cinematic stripes, plus a seven-platform directory.
 - `letterboxd.html`, `anilist.html`, `github.html`, `instagram.html`, `reddit.html`, `mail.html` — individual landing pages for the featured stripes.
-- `assets/css/connect.css` — styles used by these pages only.
+- Connect and profile page styles are scoped inside `assets/css/styles.css`.
 
 ## Add to the Nostos repository
 1. Copy `connect.html` to the repository root.
 2. Copy the six profile HTML files to the repository root.
-3. Copy `assets/css/connect.css` to `assets/css/connect.css` (create the folder if necessary).
+3. All pages use `assets/css/styles.css`; no separate Connect stylesheet is required.
 4. Preview the site, then commit and push to GitHub Pages.
 
 ## Behaviour and design
