@@ -238,8 +238,14 @@
     const track = document.createElement('div');
     track.className = 'bookshelf-track';
     cards.forEach(card => track.appendChild(card));
-    // Keep one copy of each book. The shelf scrolls back and forth, so clones
-    // are unnecessary and make short shelves (especially Want to Read) look duplicated.
+    cards.forEach(card => {
+      const clone = card.cloneNode(true);
+      clone.classList.add('book-card-clone');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.tabIndex = -1;
+      clone.querySelectorAll('img').forEach(img => { img.loading = 'eager'; });
+      track.appendChild(clone);
+    });
     target.appendChild(track);
     setupBookShelfMotion(target, track);
     setupBookCursorEffect(track);
