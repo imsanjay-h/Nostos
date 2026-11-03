@@ -2,6 +2,18 @@
   "items": [
     {
       "source": "letterboxd",
+      "sourceId": "dark-web-cicada-3301",
+      "title": "Dark Web: Cicada 3301, 2021 - ★★★",
+      "year": 2021,
+      "url": "https://letterboxd.com/gutts_1520/film/dark-web-cicada-3301/",
+      "loggedAt": "Wed, 4 Nov 2026 04:33:28 +1300",
+      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/7/0/9/5/8/2/709582-dark-web-cicada-3301-0-600-0-900-crop.jpg?v=62f8ad4899",
+      "feedDescription": "Watched on Tuesday November 3, 2026.",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
       "sourceId": "carry-on-2024",
       "title": "Carry-On, 2024 - ★★★★",
       "year": 2024,
@@ -669,23 +681,6 @@
     },
     {
       "source": "letterboxd",
-      "sourceId": "alex-pandian",
-      "title": "Alex Pandian, 2013 - ★★★",
-      "year": 2013,
-      "url": "https://letterboxd.com/gutts_1520/film/alex-pandian/",
-      "loggedAt": "Sat, 19 Sep 2026 19:06:46 +1200",
-      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/1/1/6/5/3/0/116530-alex-pandian-0-600-0-900-crop.jpg?v=05cb80f0e4",
-      "feedDescription": "Watched on Friday April 15, 2016.",
-      "watchlist": false,
-      "kindLabel": "LETTERBOXD",
-      "tmdbId": 155491,
-      "tmdbPosterPath": "/pi5nekESuNU7wAf28IeOUyvj1ms.jpg",
-      "tmdbPosterUrl": "https://image.tmdb.org/t/p/w500/pi5nekESuNU7wAf28IeOUyvj1ms.jpg",
-      "tmdbTitle": "Alex Pandian",
-      "tmdbReleaseDate": "2013-01-12"
-    },
-    {
-      "source": "letterboxd",
       "sourceId": "the-definitive-timeline-of-marvel",
       "title": "The Definitive Timeline of Marvel",
       "url": "https://letterboxd.com/gutts_1520/list/the-definitive-timeline-of-marvel/",
@@ -703,6 +698,23 @@
       "feedDescription": "A curated, non-definitive collection of 500 essential films spanning film history, iconic blockbusters, world cinema, indie gems, documentaries, and cult classics. Designed as a comprehensive bucket list for film lovers of all tastes.       The Godfather       The Godfather Part II       The Dark Knight       Schindler&#039;s List       12 Angry Men       Pulp Fiction       The Lord of the Rings: The Return of the King       The Good, the Bad and the Ugly       Fight Club       Forrest Gump       ...plus 490 more.  View the full list on Letterboxd .",
       "watchlist": false,
       "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
+      "sourceId": "alex-pandian",
+      "title": "Alex Pandian, 2013 - ★★★",
+      "year": 2013,
+      "url": "https://letterboxd.com/gutts_1520/film/alex-pandian/",
+      "loggedAt": "Sat, 19 Sep 2026 19:06:46 +1200",
+      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/1/1/6/5/3/0/116530-alex-pandian-0-600-0-900-crop.jpg?v=05cb80f0e4",
+      "feedDescription": "Watched on Friday April 15, 2016.",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD",
+      "tmdbId": 155491,
+      "tmdbPosterPath": "/pi5nekESuNU7wAf28IeOUyvj1ms.jpg",
+      "tmdbPosterUrl": "https://image.tmdb.org/t/p/w500/pi5nekESuNU7wAf28IeOUyvj1ms.jpg",
+      "tmdbTitle": "Alex Pandian",
+      "tmdbReleaseDate": "2013-01-12"
     },
     {
       "source": "letterboxd",
@@ -11077,6 +11089,6 @@
       "description": "Films that simply weren't for you. No need to pretend otherwise."
     }
   ],
-  "lastSyncedAt": "2026-11-03T13:11:05+00:00",
+  "lastSyncedAt": "2026-11-03T19:00:26+00:00",
   "lastImportedAt": "2026-10-14T15:00:13+00:00"
 }
