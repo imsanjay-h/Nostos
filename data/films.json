@@ -2,6 +2,42 @@
   "items": [
     {
       "source": "letterboxd",
+      "sourceId": "the-pursuit-of-happyness",
+      "title": "The Pursuit of Happyness, 2006 - ★★★★★",
+      "year": 2006,
+      "url": "https://letterboxd.com/gutts_1520/film/the-pursuit-of-happyness/",
+      "loggedAt": "Fri, 6 Nov 2026 07:41:29 +1300",
+      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/5/1/0/6/1/51061-the-pursuit-of-happyness-0-600-0-900-crop.jpg?v=40e1747df3",
+      "feedDescription": "Watched on Friday November 6, 2026.",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
+      "sourceId": "undine-2020",
+      "title": "Undine, 2020 - ★★",
+      "year": 2020,
+      "url": "https://letterboxd.com/gutts_1520/film/undine-2020/",
+      "loggedAt": "Fri, 6 Nov 2026 07:41:12 +1300",
+      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/5/4/2/7/9/6/542796-undine-0-600-0-900-crop.jpg?v=a00995e386",
+      "feedDescription": "Watched on Friday November 6, 2026.",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
+      "sourceId": "the-thomas-crown-affair-1999",
+      "title": "The Thomas Crown Affair, 1999 - ★★★★½",
+      "year": 1999,
+      "url": "https://letterboxd.com/gutts_1520/film/the-thomas-crown-affair-1999/",
+      "loggedAt": "Fri, 6 Nov 2026 07:41:00 +1300",
+      "posterUrl": "https://a.ltrbxd.com/resized/film-poster/5/1/2/3/9/51239-the-thomas-crown-affair-0-600-0-900-crop.jpg?v=5443b5f7d5",
+      "feedDescription": "Watched on Thursday November 5, 2026.",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
       "sourceId": "dark-web-cicada-3301",
       "title": "Dark Web: Cicada 3301, 2021 - ★★★",
       "year": 2021,
@@ -630,6 +666,26 @@
     },
     {
       "source": "letterboxd",
+      "sourceId": "the-definitive-timeline-of-marvel",
+      "title": "The Definitive Timeline of Marvel",
+      "url": "https://letterboxd.com/gutts_1520/list/the-definitive-timeline-of-marvel/",
+      "loggedAt": "Mon, 7 Sep 2026 02:07:54 +1200",
+      "feedDescription": "A chronological journey through the Marvel universe, bringing together films and series across its interconnected stories, arranged by the events within the universe.  The story, as it was meant to unfold...       X-Men       Spider-Man       X2       Spider-Man 2       X-Men: The Last Stand       Spider-Man 3       Iron Man       The Incredible Hulk       X-Men Origins: Wolverine       Iron Man 2       ...plus 74 more.  View the full list on Letterboxd .",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
+      "sourceId": "top-500-of-all-time-2",
+      "title": "Top 500 Of All Time",
+      "url": "https://letterboxd.com/gutts_1520/list/top-500-of-all-time-2/",
+      "loggedAt": "Sat, 5 Sep 2026 00:41:08 +1200",
+      "feedDescription": "A curated, non-definitive collection of 500 essential films spanning film history, iconic blockbusters, world cinema, indie gems, documentaries, and cult classics. Designed as a comprehensive bucket list for film lovers of all tastes.       The Godfather       The Godfather Part II       The Dark Knight       Schindler&#039;s List       12 Angry Men       Pulp Fiction       The Lord of the Rings: The Return of the King       The Good, the Bad and the Ugly       Fight Club       Forrest Gump       ...plus 490 more.  View the full list on Letterboxd .",
+      "watchlist": false,
+      "kindLabel": "LETTERBOXD"
+    },
+    {
+      "source": "letterboxd",
       "sourceId": "comali",
       "title": "Comali, 2019 - ★★★",
       "year": 2019,
@@ -678,26 +734,6 @@
       "tmdbPosterUrl": "https://image.tmdb.org/t/p/w500/AgvDjOzWMISPYmFsW42ZOpzPrCc.jpg",
       "tmdbTitle": "Dev",
       "tmdbReleaseDate": "2019-02-14"
-    },
-    {
-      "source": "letterboxd",
-      "sourceId": "the-definitive-timeline-of-marvel",
-      "title": "The Definitive Timeline of Marvel",
-      "url": "https://letterboxd.com/gutts_1520/list/the-definitive-timeline-of-marvel/",
-      "loggedAt": "Mon, 7 Sep 2026 02:07:54 +1200",
-      "feedDescription": "A chronological journey through the Marvel universe, bringing together films and series across its interconnected stories, arranged by the events within the universe.  The story, as it was meant to unfold...       X-Men       Spider-Man       X2       Spider-Man 2       X-Men: The Last Stand       Spider-Man 3       Iron Man       The Incredible Hulk       X-Men Origins: Wolverine       Iron Man 2       ...plus 74 more.  View the full list on Letterboxd .",
-      "watchlist": false,
-      "kindLabel": "LETTERBOXD"
-    },
-    {
-      "source": "letterboxd",
-      "sourceId": "top-500-of-all-time-2",
-      "title": "Top 500 Of All Time",
-      "url": "https://letterboxd.com/gutts_1520/list/top-500-of-all-time-2/",
-      "loggedAt": "Sat, 5 Sep 2026 00:41:08 +1200",
-      "feedDescription": "A curated, non-definitive collection of 500 essential films spanning film history, iconic blockbusters, world cinema, indie gems, documentaries, and cult classics. Designed as a comprehensive bucket list for film lovers of all tastes.       The Godfather       The Godfather Part II       The Dark Knight       Schindler&#039;s List       12 Angry Men       Pulp Fiction       The Lord of the Rings: The Return of the King       The Good, the Bad and the Ugly       Fight Club       Forrest Gump       ...plus 490 more.  View the full list on Letterboxd .",
-      "watchlist": false,
-      "kindLabel": "LETTERBOXD"
     },
     {
       "source": "letterboxd",
@@ -11089,6 +11125,6 @@
       "description": "Films that simply weren't for you. No need to pretend otherwise."
     }
   ],
-  "lastSyncedAt": "2026-11-05T13:19:19+00:00",
+  "lastSyncedAt": "2026-11-05T19:02:50+00:00",
   "lastImportedAt": "2026-10-14T15:00:13+00:00"
 }
